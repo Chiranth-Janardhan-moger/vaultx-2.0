@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:vaultx/core/theme/app_theme.dart';
 import 'package:vaultx/core/theme/theme_provider.dart';
 import 'package:vaultx/core/widgets/expressive/expressive.dart';
+import 'package:vaultx/core/services/screen_security_service.dart';
 import 'package:vaultx/features/auth/presentation/providers/auth_session_provider.dart';
 import 'package:vaultx/features/settings/presentation/change_master_password_dialog.dart';
 import 'package:vaultx/features/settings/presentation/providers/auto_lock_provider.dart';
@@ -273,6 +274,7 @@ class GeneralSettingsScreen extends ConsumerWidget {
     final autoLock = ref.watch(autoLockProvider);
     final biometricEnabled = ref.watch(biometricPreferenceProvider);
     final authState = ref.watch(authSessionProvider);
+    final screenSecurity = ref.watch(screenSecurityProvider);
 
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final cardBg = isDark ? AppColors.darkCardSurface : AppColors.lightCardSurface;
@@ -532,6 +534,19 @@ class GeneralSettingsScreen extends ConsumerWidget {
                         ],
                       ),
                       onTap: () => openAutoLockDialog(context, ref),
+                    ),
+                    Divider(height: 1, color: borderCol),
+                    ListTile(
+                      leading: const Icon(Icons.shield_outlined, color: AppColors.primaryBlue),
+                      title: const Text('Screen Privacy', style: TextStyle(fontWeight: FontWeight.w600)),
+                      subtitle: const Text('Block screenshots & cloak task switcher'),
+                      trailing: Switch.adaptive(
+                        value: screenSecurity,
+                        activeThumbColor: AppColors.primaryBlue,
+                        onChanged: (val) {
+                          ref.read(screenSecurityProvider.notifier).setEnabled(val);
+                        },
+                      ),
                     ),
                   ],
                 ),

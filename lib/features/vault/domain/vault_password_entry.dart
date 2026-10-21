@@ -1,6 +1,7 @@
 import 'dart:convert';
 
 /// Domain model representing an encrypted credential entry in the VaultX vault.
+/// Supports Standard Logins, TOTP 2FA Authenticator tokens, and Secure Notes.
 class VaultPasswordEntry {
   final String id;
   final String title;
@@ -10,6 +11,7 @@ class VaultPasswordEntry {
   final String category;
   final String websiteUrl;
   final String notes;
+  final String totpSecret;
   final DateTime createdAt;
   final DateTime updatedAt;
   final bool isDeleted;
@@ -23,10 +25,19 @@ class VaultPasswordEntry {
     this.category = 'All',
     this.websiteUrl = '',
     this.notes = '',
+    this.totpSecret = '',
     required this.createdAt,
     required this.updatedAt,
     this.isDeleted = false,
   });
+
+  bool get isSecureNote =>
+      category.toLowerCase() == 'notes' ||
+      category.toLowerCase() == 'secure note' ||
+      category.toLowerCase() == 'note' ||
+      (password.isEmpty && notes.isNotEmpty && username.isEmpty);
+
+  bool get hasTotp => totpSecret.trim().isNotEmpty;
 
   VaultPasswordEntry copyWith({
     String? id,
@@ -37,6 +48,7 @@ class VaultPasswordEntry {
     String? category,
     String? websiteUrl,
     String? notes,
+    String? totpSecret,
     DateTime? createdAt,
     DateTime? updatedAt,
     bool? isDeleted,
@@ -50,6 +62,7 @@ class VaultPasswordEntry {
       category: category ?? this.category,
       websiteUrl: websiteUrl ?? this.websiteUrl,
       notes: notes ?? this.notes,
+      totpSecret: totpSecret ?? this.totpSecret,
       createdAt: createdAt ?? this.createdAt,
       updatedAt: updatedAt ?? this.updatedAt,
       isDeleted: isDeleted ?? this.isDeleted,
@@ -66,6 +79,7 @@ class VaultPasswordEntry {
       'category': category,
       'websiteUrl': websiteUrl,
       'notes': notes,
+      'totpSecret': totpSecret,
       'createdAt': createdAt.toIso8601String(),
       'updatedAt': updatedAt.toIso8601String(),
       'isDeleted': isDeleted,
@@ -82,6 +96,7 @@ class VaultPasswordEntry {
       category: map['category'] as String? ?? 'All',
       websiteUrl: map['websiteUrl'] as String? ?? '',
       notes: map['notes'] as String? ?? '',
+      totpSecret: map['totpSecret'] as String? ?? '',
       createdAt: map['createdAt'] != null
           ? DateTime.tryParse(map['createdAt'] as String) ?? DateTime.now()
           : DateTime.now(),

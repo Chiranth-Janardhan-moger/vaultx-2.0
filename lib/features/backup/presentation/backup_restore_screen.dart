@@ -9,6 +9,7 @@ import '../../../core/widgets/expressive/expressive_button.dart';
 import '../../vault/presentation/providers/vault_passwords_provider.dart';
 import '../../wallet/presentation/providers/wallet_cards_provider.dart';
 import '../domain/vxb_backup_service.dart';
+import 'import_credentials_dialog.dart';
 import 'providers/backup_restore_provider.dart';
 
 class BackupRestoreScreen extends ConsumerStatefulWidget {
@@ -452,6 +453,66 @@ class _BackupRestoreScreenState extends ConsumerState<BackupRestoreScreen>
     return ListView(
       padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 24),
       children: [
+        // Universal CSV/JSON Importer Banner
+        Container(
+          margin: const EdgeInsets.only(bottom: 20),
+          padding: const EdgeInsets.all(16),
+          decoration: BoxDecoration(
+            color: AppColors.primaryBlue.withAlpha(isDark ? 35 : 20),
+            borderRadius: BorderRadius.circular(20),
+            border: Border.all(color: AppColors.primaryBlue.withAlpha(90)),
+          ),
+          child: Row(
+            children: [
+              Container(
+                width: 42,
+                height: 42,
+                decoration: BoxDecoration(
+                  color: AppColors.primaryBlue.withAlpha(isDark ? 50 : 30),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: const Icon(Icons.file_download_outlined, color: AppColors.primaryBlue, size: 22),
+              ),
+              const SizedBox(width: 14),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text(
+                      'Migrate from Other Managers',
+                      style: TextStyle(fontWeight: FontWeight.w700, fontSize: 14),
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      'Import Chrome, Bitwarden, or 1Password CSV/JSON',
+                      style: TextStyle(
+                        fontSize: 12,
+                        color: isDark ? AppColors.darkTextMuted : AppColors.lightTextMuted,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              FilledButton.tonal(
+                style: FilledButton.styleFrom(
+                  backgroundColor: AppColors.primaryBlue,
+                  foregroundColor: Colors.white,
+                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                ),
+                onPressed: () {
+                  HapticFeedback.lightImpact();
+                  showDialog<void>(
+                    context: context,
+                    builder: (_) => const ImportCredentialsDialog(),
+                  );
+                },
+                child: const Text('Import', style: TextStyle(fontWeight: FontWeight.w700, fontSize: 13)),
+              ),
+            ],
+          ),
+        ),
+
         // Select File Card
         InkWell(
           onTap: _pickBackupFile,

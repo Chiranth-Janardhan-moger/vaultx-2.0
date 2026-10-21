@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:vaultx/core/theme/app_theme.dart';
 import 'package:vaultx/core/widgets/expressive/expressive.dart';
+import 'package:vaultx/core/widgets/totp_code_widget.dart';
 import 'package:vaultx/features/vault/domain/vault_password_entry.dart';
 import 'package:vaultx/features/vault/presentation/providers/vault_passwords_provider.dart';
 import 'package:vaultx/features/vault/presentation/add_password_screen.dart';
@@ -377,6 +378,24 @@ class _PasswordsVaultScreenState extends ConsumerState<PasswordsVaultScreen> {
                                       Row(
                                         mainAxisSize: MainAxisSize.min,
                                         children: [
+                                          if (entry.hasTotp) ...[
+                                            Container(
+                                              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                                              decoration: BoxDecoration(
+                                                color: AppColors.primaryBlue.withAlpha(isDark ? 45 : 30),
+                                                borderRadius: BorderRadius.circular(6),
+                                              ),
+                                              child: const Text(
+                                                '2FA',
+                                                style: TextStyle(
+                                                  fontSize: 10,
+                                                  fontWeight: FontWeight.w700,
+                                                  color: AppColors.primaryBlue,
+                                                ),
+                                              ),
+                                            ),
+                                            const SizedBox(width: 6),
+                                          ],
                                           Container(
                                             padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
                                             decoration: BoxDecoration(
@@ -583,6 +602,15 @@ class _CredentialInspectionSheetState extends State<_CredentialInspectionSheet> 
             ],
           ),
           const SizedBox(height: 20),
+
+          // Real-time 2FA TOTP Authenticator Card
+          if (widget.entry.hasTotp) ...[
+            TotpCodeWidget(
+              secret: widget.entry.totpSecret,
+              accountLabel: widget.entry.username.isNotEmpty ? widget.entry.username : widget.entry.title,
+            ),
+            const SizedBox(height: 14),
+          ],
 
           // Username Tile
           Container(
