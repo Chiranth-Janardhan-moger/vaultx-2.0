@@ -1,3 +1,4 @@
+import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:vaultx/core/theme/app_theme.dart';
@@ -116,10 +117,16 @@ class _ExpressiveVerticalMotionSliderState
       increasedValue: '${(widget.value + 1).clamp(widget.min, widget.max)} characters',
       decreasedValue: '${(widget.value - 1).clamp(widget.min, widget.max)} characters',
       onIncrease: () {
-        if (widget.value < widget.max) widget.onChanged(widget.value + 1);
+        if (widget.value < widget.max) {
+          HapticFeedback.selectionClick();
+          widget.onChanged(widget.value + 1);
+        }
       },
       onDecrease: () {
-        if (widget.value > widget.min) widget.onChanged(widget.value - 1);
+        if (widget.value > widget.min) {
+          HapticFeedback.selectionClick();
+          widget.onChanged(widget.value - 1);
+        }
       },
       child: LayoutBuilder(
         builder: (context, constraints) {
@@ -128,7 +135,20 @@ class _ExpressiveVerticalMotionSliderState
           return SizedBox(
             width: widget.width,
             height: totalHeight,
-            child: GestureDetector(
+            child: Listener(
+              onPointerSignal: (pointerSignal) {
+                if (pointerSignal is PointerScrollEvent) {
+                  final delta = pointerSignal.scrollDelta.dy;
+                  if (delta < 0 && widget.value < widget.max) {
+                    HapticFeedback.selectionClick();
+                    widget.onChanged(widget.value + 1);
+                  } else if (delta > 0 && widget.value > widget.min) {
+                    HapticFeedback.selectionClick();
+                    widget.onChanged(widget.value - 1);
+                  }
+                }
+              },
+              child: GestureDetector(
               behavior: HitTestBehavior.opaque,
               onVerticalDragStart: (details) =>
                   _onInteractionStart(details.localPosition, totalHeight),
@@ -291,7 +311,8 @@ class _ExpressiveVerticalMotionSliderState
                 },
               ),
             ),
-          );
+          ),
+        );
         },
       ),
     );

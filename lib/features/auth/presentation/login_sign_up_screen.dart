@@ -4,7 +4,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:vaultx/core/theme/app_theme.dart';
-import 'package:vaultx/core/theme/happy_feedback.dart';
 import 'package:vaultx/features/auth/presentation/providers/auth_session_provider.dart';
 import 'package:vaultx/features/settings/presentation/providers/biometric_preference_provider.dart';
 
@@ -104,11 +103,6 @@ class _LoginSignUpScreenState extends ConsumerState<LoginSignUpScreen> {
       setState(() => _isLoading = false);
       if (success) {
         if (!mounted) return;
-        HappyFeedback.show(
-          context,
-          message: 'Vault unlocked successfully',
-          duration: const Duration(milliseconds: 1400),
-        );
         widget.onAuthenticated?.call();
       } else {
         await HapticFeedback.heavyImpact();
@@ -141,11 +135,6 @@ class _LoginSignUpScreenState extends ConsumerState<LoginSignUpScreen> {
     if (mounted) {
       setState(() => _isLoading = false);
       if (success) {
-        HappyFeedback.show(
-          context,
-          message: 'Vault unlocked successfully',
-          duration: const Duration(milliseconds: 1400),
-        );
         widget.onAuthenticated?.call();
       } else {
         unawaited(HapticFeedback.lightImpact());

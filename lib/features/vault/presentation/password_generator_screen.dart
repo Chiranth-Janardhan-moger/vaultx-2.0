@@ -351,6 +351,7 @@ class _PasswordGeneratorScreenState extends State<PasswordGeneratorScreen> {
                         max: 32,
                         height: 270,
                         onChanged: (val) {
+                          HapticFeedback.selectionClick();
                           setState(() => _length = val);
                           _regenerate();
                         },

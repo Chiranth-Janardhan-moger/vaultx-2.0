@@ -735,19 +735,20 @@ void main() {
       await tester.pumpWidget(buildSettings());
       await tester.pumpAndSettle();
 
-      final wipeButton = find.textContaining('Wipe');
-      if (wipeButton.evaluate().isNotEmpty) {
-        await tester.ensureVisible(wipeButton.first);
-        await tester.pumpAndSettle();
-        await tester.tap(wipeButton.first);
-        await tester.pumpAndSettle();
+      // Open App Info to access Danger Zone
+      final appInfoTile = find.text('App Info');
+      expect(appInfoTile, findsOneWidget);
+      await tester.tap(appInfoTile);
+      await tester.pumpAndSettle();
 
-        final hasDialog = find.byType(AlertDialog).evaluate().isNotEmpty ||
-            find.textContaining('confirm').evaluate().isNotEmpty ||
-            find.textContaining('Confirm').evaluate().isNotEmpty ||
-            find.textContaining('Cancel').evaluate().isNotEmpty;
-        expect(hasDialog, isTrue);
-      }
+      final wipeButton = find.text('Wipe Everything');
+      expect(wipeButton, findsOneWidget);
+      await tester.ensureVisible(wipeButton);
+      await tester.pumpAndSettle();
+      await tester.tap(wipeButton);
+      await tester.pumpAndSettle();
+
+      expect(find.byType(AlertDialog), findsOneWidget);
     });
 
     testWidgets('renders in light mode without errors', (tester) async {
@@ -769,6 +770,12 @@ void main() {
 
     testWidgets('auto-lock dialog opens with all options and allows selection', (tester) async {
       await tester.pumpWidget(buildSettings());
+      await tester.pumpAndSettle();
+
+      // Open General settings to access Auto-Lock Duration
+      final generalTile = find.text('General');
+      expect(generalTile, findsOneWidget);
+      await tester.tap(generalTile);
       await tester.pumpAndSettle();
 
       final autoLockTile = find.text('Auto-Lock Duration');
@@ -795,6 +802,22 @@ void main() {
       // Dialog dismissed and ListTile updated
       expect(find.byType(Dialog), findsNothing);
       expect(find.text('1 Minute'), findsOneWidget);
+    });
+
+    testWidgets('supports System, Dark, and Light theme modes', (tester) async {
+      await tester.pumpWidget(buildSettings());
+      await tester.pumpAndSettle();
+
+      final generalTile = find.text('General');
+      await tester.tap(generalTile);
+      await tester.pumpAndSettle();
+
+      expect(find.text('System'), findsOneWidget);
+      expect(find.text('Dark'), findsOneWidget);
+      expect(find.text('Light'), findsOneWidget);
+
+      await tester.tap(find.text('System'));
+      await tester.pumpAndSettle();
     });
 
     testWidgets('has Sync / Backup setting', (tester) async {
