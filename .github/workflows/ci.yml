@@ -70,24 +70,24 @@ jobs:
       - name: Install Dependencies
         run: flutter pub get
 
-      - name: Build Android APK (debug)
-        run: flutter build apk --debug
+      - name: Build Android Release Split APKs (v7 & v8 with R8)
+        run: flutter build apk --target-platform android-arm,android-arm64 --split-per-abi
 
-      - name: Build Android App Bundle AAB (debug)
-        run: flutter build appbundle --debug
+      - name: Build Android App Bundle AAB (release)
+        run: flutter build appbundle --release
 
-      - name: Upload Android APK Artifact
+      - name: Upload Android Split APKs Artifact
         uses: actions/upload-artifact@v4
         with:
-          name: vaultx-android-apk-${{ github.sha }}
-          path: build/app/outputs/flutter-apk/app-debug.apk
+          name: vaultx-android-split-apks-${{ github.sha }}
+          path: build/app/outputs/flutter-apk/app-*-release.apk
           retention-days: 30
 
       - name: Upload Android AAB Artifact
         uses: actions/upload-artifact@v4
         with:
           name: vaultx-android-aab-${{ github.sha }}
-          path: build/app/outputs/bundle/debug/app-debug.aab
+          path: build/app/outputs/bundle/release/app-release.aab
           retention-days: 30
 
   build-windows:
