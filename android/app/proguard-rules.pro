@@ -49,3 +49,8 @@
 -dontwarn org.bouncycastle.**
 -dontwarn org.conscrypt.**
 -dontwarn com.google.crypto.tink.**
+
+# File Picker & Share Plus
+-keep class com.mr.flutter.plugin.filepicker.** { *; }
+-keep class dev.fluttercommunity.plus.share.** { *; }
+

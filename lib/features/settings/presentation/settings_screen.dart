@@ -9,6 +9,7 @@ import 'package:vaultx/features/settings/presentation/change_master_password_dia
 import 'package:vaultx/features/settings/presentation/providers/auto_lock_provider.dart';
 import 'package:vaultx/features/settings/presentation/providers/biometric_preference_provider.dart';
 import 'package:vaultx/features/sync/presentation/sync_screen.dart';
+import 'package:vaultx/features/backup/presentation/backup_restore_screen.dart';
 
 /// Screen 8: Settings & Theme Switcher Screen
 ///
@@ -557,12 +558,29 @@ class SettingsScreen extends ConsumerWidget {
                     ),
                     Divider(height: 1, color: borderCol),
                     ListTile(
-                      leading: const Icon(Icons.backup_rounded, color: AppColors.primaryBlue),
+                      leading: const Icon(Icons.cloud_upload_rounded, color: AppColors.primaryBlue),
                       title: const Text('Backup Vault', style: TextStyle(fontWeight: FontWeight.w600)),
+                      subtitle: const Text('Export encrypted .vxb backup file'),
                       trailing: const Icon(Icons.chevron_right_rounded),
                       onTap: () {
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(content: Text('Encrypted JSON backup exported successfully')),
+                        Navigator.of(context).push(
+                          MaterialPageRoute<void>(
+                            builder: (_) => const BackupRestoreScreen(initialTabIndex: 0),
+                          ),
+                        );
+                      },
+                    ),
+                    Divider(height: 1, color: borderCol),
+                    ListTile(
+                      leading: const Icon(Icons.cloud_download_rounded, color: AppColors.primaryBlue),
+                      title: const Text('Restore Vault', style: TextStyle(fontWeight: FontWeight.w600)),
+                      subtitle: const Text('Restore from .vxb backup file'),
+                      trailing: const Icon(Icons.chevron_right_rounded),
+                      onTap: () {
+                        Navigator.of(context).push(
+                          MaterialPageRoute<void>(
+                            builder: (_) => const BackupRestoreScreen(initialTabIndex: 1),
+                          ),
                         );
                       },
                     ),
