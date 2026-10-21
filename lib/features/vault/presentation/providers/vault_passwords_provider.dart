@@ -1,14 +1,29 @@
+import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_riverpod/legacy.dart';
 import 'package:vaultx/core/storage/vault_storage_service.dart';
 import 'package:vaultx/features/auth/presentation/providers/auth_session_provider.dart';
 import 'package:vaultx/features/vault/domain/vault_password_entry.dart';
+import 'package:vaultx/features/vault/domain/vault_watchtower_engine.dart';
+
+/// Supported sort orders for the credential vault.
+enum VaultSortOption {
+  recentlyModified('Recently Modified', Icons.access_time_rounded),
+  recentlyCreated('Recently Created', Icons.history_rounded),
+  alphabetical('Alphabetical (A–Z)', Icons.sort_by_alpha_rounded),
+  strength('Strength (Weakest First)', Icons.health_and_safety_rounded);
+
+  final String label;
+  final IconData icon;
+  const VaultSortOption(this.label, this.icon);
+}
 
 class VaultPasswordsState {
   final List<VaultPasswordEntry> allEntries;
   final String searchQuery;
   final String selectedCategory;
   final List<String> customCategories;
+  final VaultSortOption activeSortOption;
 
   static const List<String> defaultCategories = [
     'Email',
@@ -24,6 +39,7 @@ class VaultPasswordsState {
     this.searchQuery = '',
     this.selectedCategory = 'All',
     this.customCategories = const [],
+    this.activeSortOption = VaultSortOption.recentlyModified,
   });
 
   List<VaultPasswordEntry> get activeEntries =>
@@ -47,18 +63,48 @@ class VaultPasswordsState {
   }
 
   List<VaultPasswordEntry> get filteredEntries {
-    return allEntries.where((entry) {
+    final list = allEntries.where((entry) {
       if (entry.isDeleted) return false;
-      final matchesCategory = selectedCategory == 'All' ||
-          entry.category.toLowerCase() == selectedCategory.toLowerCase();
+
+      final isFavFilter = selectedCategory == '★ Favorites' ||
+          selectedCategory == 'Favorites';
+      final matchesCategory = isFavFilter
+          ? entry.isFavorite
+          : (selectedCategory == 'All' ||
+              entry.category.toLowerCase() == selectedCategory.toLowerCase());
+
       final query = searchQuery.trim().toLowerCase();
       final matchesSearch = query.isEmpty ||
           entry.title.toLowerCase().contains(query) ||
           entry.username.toLowerCase().contains(query) ||
           entry.email.toLowerCase().contains(query) ||
           entry.category.toLowerCase().contains(query);
+
       return matchesCategory && matchesSearch;
     }).toList();
+
+    // Sort entries: Pin favorites to top unless already in the dedicated favorites tab
+    list.sort((a, b) {
+      final isFavTab = selectedCategory == '★ Favorites' || selectedCategory == 'Favorites';
+      if (!isFavTab && a.isFavorite != b.isFavorite) {
+        return a.isFavorite ? -1 : 1;
+      }
+
+      switch (activeSortOption) {
+        case VaultSortOption.recentlyModified:
+          return b.updatedAt.compareTo(a.updatedAt);
+        case VaultSortOption.recentlyCreated:
+          return b.createdAt.compareTo(a.createdAt);
+        case VaultSortOption.alphabetical:
+          return a.title.toLowerCase().compareTo(b.title.toLowerCase());
+        case VaultSortOption.strength:
+          final aEntropy = a.isSecureNote ? 999.0 : VaultWatchtowerEngine.calculateEntropy(a.password);
+          final bEntropy = b.isSecureNote ? 999.0 : VaultWatchtowerEngine.calculateEntropy(b.password);
+          return aEntropy.compareTo(bEntropy);
+      }
+    });
+
+    return list;
   }
 
   VaultPasswordsState copyWith({
@@ -66,12 +112,14 @@ class VaultPasswordsState {
     String? searchQuery,
     String? selectedCategory,
     List<String>? customCategories,
+    VaultSortOption? activeSortOption,
   }) {
     return VaultPasswordsState(
       allEntries: allEntries ?? this.allEntries,
       searchQuery: searchQuery ?? this.searchQuery,
       selectedCategory: selectedCategory ?? this.selectedCategory,
       customCategories: customCategories ?? this.customCategories,
+      activeSortOption: activeSortOption ?? this.activeSortOption,
     );
   }
 }
@@ -163,6 +211,29 @@ class VaultPasswordsNotifier extends StateNotifier<VaultPasswordsState> {
       _persistEntry(tombstone!);
     } else {
       _storage.deletePassword(id);
+    }
+  }
+
+  void setSortOption(VaultSortOption sort) {
+    state = state.copyWith(activeSortOption: sort);
+  }
+
+  void toggleFavorite(String id) {
+    VaultPasswordEntry? updatedEntry;
+    final updatedList = state.allEntries.map((e) {
+      if (e.id == id) {
+        updatedEntry = e.copyWith(
+          isFavorite: !e.isFavorite,
+          updatedAt: DateTime.now(),
+        );
+        return updatedEntry!;
+      }
+      return e;
+    }).toList();
+
+    state = state.copyWith(allEntries: updatedList);
+    if (updatedEntry != null) {
+      _persistEntry(updatedEntry!);
     }
   }
 

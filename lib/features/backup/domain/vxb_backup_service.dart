@@ -189,6 +189,8 @@ class VxbBackupService {
     final category = item['category']?.toString() ?? item['folder']?.toString() ?? 'All';
     final websiteUrl = item['websiteUrl']?.toString() ?? '';
     final notes = item['notes']?.toString() ?? '';
+    final totpSecret = item['totpSecret']?.toString() ?? item['totp']?.toString() ?? '';
+    final isFavorite = item['isFavorite'] == true;
 
     DateTime createdAt = DateTime.now();
     if (item['createdAt'] is int) {
@@ -217,8 +219,10 @@ class VxbBackupService {
       category: category,
       websiteUrl: websiteUrl,
       notes: notes,
+      totpSecret: totpSecret,
       createdAt: createdAt,
       updatedAt: updatedAt,
+      isFavorite: isFavorite,
     );
   }
 

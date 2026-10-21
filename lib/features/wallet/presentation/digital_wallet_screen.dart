@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:vaultx/core/services/clipboard_security_service.dart';
 import 'package:vaultx/core/theme/app_theme.dart';
 import 'package:vaultx/core/widgets/expressive/expressive.dart';
 import 'package:vaultx/core/widgets/physical_card_widget.dart';
@@ -285,14 +286,13 @@ class _CardDetailsSheet extends StatelessWidget {
   const _CardDetailsSheet({required this.card});
 
   void _copyToClipboard(BuildContext context, String text, String label) {
-    Clipboard.setData(ClipboardData(text: text));
     HapticFeedback.lightImpact();
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        backgroundColor: AppColors.emerald500,
-        content: Text('$label copied to clipboard'),
-        duration: const Duration(seconds: 2),
-      ),
+    ClipboardSecurityService.copySecure(
+      context: context,
+      ref: null,
+      text: text,
+      label: label,
+      isSensitive: true,
     );
   }
 

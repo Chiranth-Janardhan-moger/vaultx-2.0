@@ -2,8 +2,8 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:vaultx/core/crypto/totp_service.dart';
+import 'package:vaultx/core/services/clipboard_security_service.dart';
 import 'package:vaultx/core/theme/app_theme.dart';
-import 'package:vaultx/core/theme/happy_feedback.dart';
 
 /// Real-time RFC 6238 TOTP authenticator token card.
 ///
@@ -64,11 +64,12 @@ class _TotpCodeWidgetState extends State<TotpCodeWidget> {
 
   void _copyToClipboard() {
     HapticFeedback.lightImpact();
-    Clipboard.setData(ClipboardData(text: _currentCode.replaceAll(' ', '')));
-    HappyFeedback.show(
-      context,
-      message: '2FA Code copied',
-      duration: const Duration(milliseconds: 1400),
+    ClipboardSecurityService.copySecure(
+      context: context,
+      ref: null,
+      text: _currentCode.replaceAll(' ', ''),
+      label: '2FA Code',
+      isSensitive: true,
     );
   }
 

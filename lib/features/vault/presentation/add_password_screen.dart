@@ -28,6 +28,7 @@ class _AddPasswordScreenState extends ConsumerState<AddPasswordScreen> {
   final _notesController = TextEditingController();
 
   bool _isSecureNote = false;
+  bool _isFavorite = false;
   String _selectedCategory = 'Email';
   bool _obscurePassword = true;
 
@@ -166,6 +167,7 @@ class _AddPasswordScreenState extends ConsumerState<AddPasswordScreen> {
       totpSecret: extractedTotp,
       createdAt: DateTime.now(),
       updatedAt: DateTime.now(),
+      isFavorite: _isFavorite,
     );
 
     ref.read(vaultPasswordsProvider.notifier).addPassword(newEntry);
@@ -204,6 +206,20 @@ class _AddPasswordScreenState extends ConsumerState<AddPasswordScreen> {
         ),
         centerTitle: true,
         actions: [
+          IconButton(
+            icon: Icon(
+              _isFavorite ? Icons.star_rounded : Icons.star_outline_rounded,
+              color: _isFavorite
+                  ? Colors.amber
+                  : (isDark ? AppColors.darkTextMuted : AppColors.lightTextMuted),
+              size: 22,
+            ),
+            tooltip: _isFavorite ? 'Remove from favorites' : 'Mark as favorite',
+            onPressed: () {
+              HapticFeedback.selectionClick();
+              setState(() => _isFavorite = !_isFavorite);
+            },
+          ),
           Padding(
             padding: const EdgeInsets.only(right: 12),
             child: ExpressiveButton.filled(

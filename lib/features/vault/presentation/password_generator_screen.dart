@@ -1,6 +1,8 @@
 import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:vaultx/core/services/clipboard_security_service.dart';
 import 'package:vaultx/core/theme/app_theme.dart';
 import 'package:vaultx/core/widgets/expressive/expressive.dart';
 
@@ -8,14 +10,14 @@ import 'package:vaultx/core/widgets/expressive/expressive.dart';
 ///
 /// Features monospace password display, entropy evaluation gauge, 1-tap copy,
 /// 4 character set toggles, and tactile vertical ladder length slider.
-class PasswordGeneratorScreen extends StatefulWidget {
+class PasswordGeneratorScreen extends ConsumerStatefulWidget {
   const PasswordGeneratorScreen({super.key});
 
   @override
-  State<PasswordGeneratorScreen> createState() => _PasswordGeneratorScreenState();
+  ConsumerState<PasswordGeneratorScreen> createState() => _PasswordGeneratorScreenState();
 }
 
-class _PasswordGeneratorScreenState extends State<PasswordGeneratorScreen> {
+class _PasswordGeneratorScreenState extends ConsumerState<PasswordGeneratorScreen> {
   int _length = 16;
   bool _useUpper = true;
   bool _useLower = true;
@@ -110,11 +112,13 @@ class _PasswordGeneratorScreenState extends State<PasswordGeneratorScreen> {
 
   void _copyToClipboard() {
     if (_generatedPassword.isEmpty) return;
-    Clipboard.setData(ClipboardData(text: _generatedPassword));
-    HappyFeedback.show(
-      context,
-      message: 'Password copied to clipboard!',
-      icon: Icons.copy_rounded,
+    HapticFeedback.lightImpact();
+    ClipboardSecurityService.copySecure(
+      context: context,
+      ref: ref,
+      text: _generatedPassword,
+      label: 'Generated Password',
+      isSensitive: true,
     );
   }
 

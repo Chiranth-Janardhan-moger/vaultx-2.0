@@ -15,6 +15,7 @@ class VaultPasswordEntry {
   final DateTime createdAt;
   final DateTime updatedAt;
   final bool isDeleted;
+  final bool isFavorite;
 
   const VaultPasswordEntry({
     required this.id,
@@ -29,6 +30,7 @@ class VaultPasswordEntry {
     required this.createdAt,
     required this.updatedAt,
     this.isDeleted = false,
+    this.isFavorite = false,
   });
 
   bool get isSecureNote =>
@@ -52,6 +54,7 @@ class VaultPasswordEntry {
     DateTime? createdAt,
     DateTime? updatedAt,
     bool? isDeleted,
+    bool? isFavorite,
   }) {
     return VaultPasswordEntry(
       id: id ?? this.id,
@@ -66,6 +69,7 @@ class VaultPasswordEntry {
       createdAt: createdAt ?? this.createdAt,
       updatedAt: updatedAt ?? this.updatedAt,
       isDeleted: isDeleted ?? this.isDeleted,
+      isFavorite: isFavorite ?? this.isFavorite,
     );
   }
 
@@ -83,6 +87,7 @@ class VaultPasswordEntry {
       'createdAt': createdAt.toIso8601String(),
       'updatedAt': updatedAt.toIso8601String(),
       'isDeleted': isDeleted,
+      'isFavorite': isFavorite,
     };
   }
 
@@ -104,6 +109,7 @@ class VaultPasswordEntry {
           ? DateTime.tryParse(map['updatedAt'] as String) ?? DateTime.now()
           : DateTime.now(),
       isDeleted: map['isDeleted'] as bool? ?? false,
+      isFavorite: map['isFavorite'] as bool? ?? false,
     );
   }
 

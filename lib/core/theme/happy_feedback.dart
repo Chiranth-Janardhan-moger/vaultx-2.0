@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:vaultx/core/services/clipboard_security_service.dart';
 import 'package:vaultx/core/theme/app_theme.dart';
 
 /// Tactile vibration patterns and delightful visual notifications for celebratory,
@@ -38,7 +39,7 @@ class HappyFeedback {
   /// Displays a floating Material 3 Expressive happy snackbar with an emerald glow,
   /// affirmative icon, and concurrently triggers the happy vibration.
   static void show(
-    BuildContext context, {
+    BuildContext? context, {
     required String message,
     String? title,
     IconData icon = Icons.check_circle_rounded,
@@ -49,7 +50,8 @@ class HappyFeedback {
       unawaited(vibrate());
     }
 
-    final messenger = ScaffoldMessenger.maybeOf(context);
+    final messenger = (context != null ? ScaffoldMessenger.maybeOf(context) : null) ??
+        AppGlobals.scaffoldMessengerKey.currentState;
     if (messenger == null) return;
 
     messenger.clearSnackBars();

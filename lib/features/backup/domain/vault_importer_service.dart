@@ -109,6 +109,8 @@ class VaultImporterService {
             }
           }
 
+          final isFavorite = item['favorite'] as bool? ?? false;
+
           if (name.isNotEmpty || username.isNotEmpty || password.isNotEmpty || notes.isNotEmpty) {
             entries.add(
               VaultPasswordEntry(
@@ -123,6 +125,7 @@ class VaultImporterService {
                 category: 'Imported',
                 createdAt: now,
                 updatedAt: now,
+                isFavorite: isFavorite,
               ),
             );
           }

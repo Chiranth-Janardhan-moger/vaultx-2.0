@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:vaultx/core/services/clipboard_security_service.dart';
 import 'package:vaultx/core/theme/app_theme.dart';
 import 'package:vaultx/core/theme/happy_feedback.dart';
 import 'package:vaultx/core/widgets/totp_code_widget.dart';
@@ -54,14 +55,13 @@ class _EditPasswordScreenState extends ConsumerState<EditPasswordScreen> {
   }
 
   void _copyToClipboard(String text, String label) {
-    Clipboard.setData(ClipboardData(text: text));
     HapticFeedback.lightImpact();
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        backgroundColor: AppColors.emerald500,
-        content: Text('$label copied to clipboard'),
-        duration: const Duration(seconds: 2),
-      ),
+    ClipboardSecurityService.copySecure(
+      context: context,
+      ref: ref,
+      text: text,
+      label: label,
+      isSensitive: label.toLowerCase().contains('password') || label.toLowerCase().contains('key') || label.toLowerCase().contains('secret'),
     );
   }
 
@@ -129,7 +129,12 @@ class _EditPasswordScreenState extends ConsumerState<EditPasswordScreen> {
     final cardBg = isDark ? AppColors.darkCardSurface : AppColors.lightCardSurface;
     final borderCol = isDark ? AppColors.darkBorder : AppColors.lightBorder;
     final inputBg = isDark ? AppColors.darkInputSurface : AppColors.lightInputSurface;
+    final mutedCol = isDark ? AppColors.darkTextMuted : AppColors.lightTextMuted;
     final isNote = widget.entry.isSecureNote;
+    final currentEntry = ref.watch(vaultPasswordsProvider).allEntries.firstWhere(
+          (e) => e.id == widget.entry.id,
+          orElse: () => widget.entry,
+        );
 
     return Scaffold(
       appBar: AppBar(
@@ -147,6 +152,18 @@ class _EditPasswordScreenState extends ConsumerState<EditPasswordScreen> {
           onPressed: () => Navigator.of(context).pop(),
         ),
         actions: [
+          IconButton(
+            icon: Icon(
+              currentEntry.isFavorite ? Icons.star_rounded : Icons.star_outline_rounded,
+              color: currentEntry.isFavorite ? Colors.amber : mutedCol,
+              size: 22,
+            ),
+            tooltip: currentEntry.isFavorite ? 'Remove from favorites' : 'Add to favorites',
+            onPressed: () {
+              HapticFeedback.selectionClick();
+              ref.read(vaultPasswordsProvider.notifier).toggleFavorite(currentEntry.id);
+            },
+          ),
           TextButton(
             onPressed: _toggleEditDone,
             child: Text(

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'core/services/clipboard_security_service.dart';
 import 'core/theme/app_theme.dart';
 import 'core/theme/theme_provider.dart';
 import 'core/widgets/floating_nav_dock.dart';
@@ -25,6 +26,7 @@ class VaultXApp extends ConsumerWidget {
 
     return MaterialApp(
       title: 'VaultX',
+      scaffoldMessengerKey: AppGlobals.scaffoldMessengerKey,
       debugShowCheckedModeBanner: false,
       theme: AppTheme.lightTheme,
       darkTheme: AppTheme.darkTheme,

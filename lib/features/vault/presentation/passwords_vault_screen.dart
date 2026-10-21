@@ -1,13 +1,16 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:vaultx/core/services/clipboard_security_service.dart';
 import 'package:vaultx/core/theme/app_theme.dart';
 import 'package:vaultx/core/widgets/expressive/expressive.dart';
 import 'package:vaultx/core/widgets/totp_code_widget.dart';
 import 'package:vaultx/features/vault/domain/vault_password_entry.dart';
+import 'package:vaultx/features/vault/domain/vault_watchtower_engine.dart';
 import 'package:vaultx/features/vault/presentation/providers/vault_passwords_provider.dart';
 import 'package:vaultx/features/vault/presentation/add_password_screen.dart';
 import 'package:vaultx/features/vault/presentation/edit_password_screen.dart';
+import 'package:vaultx/features/vault/presentation/vault_watchtower_sheet.dart';
 
 /// Screen 2: Passwords Vault Screen (Home)
 ///
@@ -95,6 +98,16 @@ class _PasswordsVaultScreenState extends ConsumerState<PasswordsVaultScreen> {
     );
   }
 
+  void _openWatchtowerSheet() {
+    HapticFeedback.lightImpact();
+    showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (_) => const VaultWatchtowerSheet(),
+    );
+  }
+
   void _navigateToAdd() {
     HapticFeedback.lightImpact();
     Navigator.of(context).push(
@@ -128,11 +141,13 @@ class _PasswordsVaultScreenState extends ConsumerState<PasswordsVaultScreen> {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final vaultState = ref.watch(vaultPasswordsProvider);
     final entries = vaultState.filteredEntries;
-    final categories = ['All', ...vaultState.allCategories];
+    final report = VaultWatchtowerEngine.audit(vaultState.allEntries);
+    final categories = ['All', '★ Favorites', ...vaultState.allCategories];
 
     final cardBg = isDark ? AppColors.darkCardSurface : AppColors.lightCardSurface;
     final inputBg = isDark ? AppColors.darkInputSurface : AppColors.lightInputSurface;
     final borderCol = isDark ? AppColors.darkBorder : AppColors.lightBorder;
+    final mutedCol = isDark ? AppColors.darkTextMuted : AppColors.lightTextMuted;
 
     return Scaffold(
       body: SafeArea(
@@ -159,10 +174,109 @@ class _PasswordsVaultScreenState extends ConsumerState<PasswordsVaultScreen> {
                         letterSpacing: -0.5,
                       ),
                     ),
-                    ExpressiveIconButton.filled(
-                      onPressed: _navigateToAdd,
-                      icon: const Icon(Icons.add_rounded, size: 22),
-                      tooltip: 'Add Password',
+                    Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        // Vault Watchtower Shield Button
+                        Stack(
+                          clipBehavior: Clip.none,
+                          children: [
+                            ExpressiveIconButton.filled(
+                              onPressed: _openWatchtowerSheet,
+                              icon: const Icon(Icons.shield_outlined, size: 20),
+                              color: cardBg,
+                              foregroundColor: report.hasIssues ? AppColors.amber500 : AppColors.emerald500,
+                              tooltip: 'Security Audit',
+                            ),
+                            if (report.hasIssues)
+                              Positioned(
+                                top: 4,
+                                right: 4,
+                                child: Container(
+                                  width: 8,
+                                  height: 8,
+                                  decoration: const BoxDecoration(
+                                    color: AppColors.rose500,
+                                    shape: BoxShape.circle,
+                                  ),
+                                ),
+                              ),
+                          ],
+                        ),
+                        const SizedBox(width: 8),
+
+                        // Compact Sort Menu
+                        Container(
+                          height: 40,
+                          width: 40,
+                          decoration: BoxDecoration(
+                            color: cardBg,
+                            shape: BoxShape.circle,
+                            border: Border.all(color: borderCol),
+                          ),
+                          child: PopupMenuButton<VaultSortOption>(
+                            tooltip: 'Sort Options',
+                            icon: Icon(
+                              Icons.sort_rounded,
+                              size: 20,
+                              color: isDark ? AppColors.darkTextPrimary : AppColors.lightTextPrimary,
+                            ),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(16),
+                              side: BorderSide(color: borderCol),
+                            ),
+                            color: cardBg,
+                            onSelected: (option) {
+                              HapticFeedback.selectionClick();
+                              ref.read(vaultPasswordsProvider.notifier).setSortOption(option);
+                            },
+                            itemBuilder: (context) {
+                              return VaultSortOption.values.map((option) {
+                                final isSelected = vaultState.activeSortOption == option;
+                                return PopupMenuItem<VaultSortOption>(
+                                  value: option,
+                                  child: Row(
+                                    children: [
+                                      Icon(
+                                        option.icon,
+                                        size: 18,
+                                        color: isSelected ? AppColors.primaryBlue : mutedCol,
+                                      ),
+                                      const SizedBox(width: 10),
+                                      Expanded(
+                                        child: Text(
+                                          option.label,
+                                          style: TextStyle(
+                                            fontSize: 13,
+                                            fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
+                                            color: isSelected
+                                                ? AppColors.primaryBlue
+                                                : (isDark ? Colors.white : Colors.black87),
+                                          ),
+                                        ),
+                                      ),
+                                      if (isSelected)
+                                        const Icon(
+                                          Icons.check_rounded,
+                                          size: 16,
+                                          color: AppColors.primaryBlue,
+                                        ),
+                                    ],
+                                  ),
+                                );
+                              }).toList();
+                            },
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+
+                        // Add Password Button
+                        ExpressiveIconButton.filled(
+                          onPressed: _navigateToAdd,
+                          icon: const Icon(Icons.add_rounded, size: 22),
+                          tooltip: 'Add Password',
+                        ),
+                      ],
                     ),
                   ],
                 ),
@@ -346,14 +460,24 @@ class _PasswordsVaultScreenState extends ConsumerState<PasswordsVaultScreen> {
                                     child: Column(
                                       crossAxisAlignment: CrossAxisAlignment.start,
                                       children: [
-                                        Text(
-                                          entry.title,
-                                          maxLines: 1,
-                                          overflow: TextOverflow.ellipsis,
-                                          style: const TextStyle(
-                                            fontSize: 15,
-                                            fontWeight: FontWeight.w700,
-                                          ),
+                                        Row(
+                                          children: [
+                                            Flexible(
+                                              child: Text(
+                                                entry.title,
+                                                maxLines: 1,
+                                                overflow: TextOverflow.ellipsis,
+                                                style: const TextStyle(
+                                                  fontSize: 15,
+                                                  fontWeight: FontWeight.w700,
+                                                ),
+                                              ),
+                                            ),
+                                            if (entry.isFavorite) ...[
+                                              const SizedBox(width: 4),
+                                              const Icon(Icons.star_rounded, size: 14, color: Colors.amber),
+                                            ],
+                                          ],
                                         ),
                                         const SizedBox(height: 2),
                                         Text(
@@ -413,7 +537,25 @@ class _PasswordsVaultScreenState extends ConsumerState<PasswordsVaultScreen> {
                                               ),
                                             ),
                                           ),
-                                          const SizedBox(width: 8),
+                                          const SizedBox(width: 4),
+                                          GestureDetector(
+                                            behavior: HitTestBehavior.opaque,
+                                            onTap: () {
+                                              HapticFeedback.selectionClick();
+                                              ref.read(vaultPasswordsProvider.notifier).toggleFavorite(entry.id);
+                                            },
+                                            child: Padding(
+                                              padding: const EdgeInsets.symmetric(horizontal: 2, vertical: 2),
+                                              child: Icon(
+                                                entry.isFavorite ? Icons.star_rounded : Icons.star_outline_rounded,
+                                                color: entry.isFavorite
+                                                    ? Colors.amber
+                                                    : (isDark ? AppColors.darkTextMuted : AppColors.lightTextMuted),
+                                                size: 19,
+                                              ),
+                                            ),
+                                          ),
+                                          const SizedBox(width: 4),
                                           Icon(
                                             Icons.chevron_right_rounded,
                                             color: isDark
@@ -483,24 +625,28 @@ class _PasswordsVaultScreenState extends ConsumerState<PasswordsVaultScreen> {
 }
 
 /// Slide-up bottom sheet inspection modal with unmask toggles and 1-tap clipboard copy
-class _CredentialInspectionSheet extends StatefulWidget {
+class _CredentialInspectionSheet extends ConsumerStatefulWidget {
   final VaultPasswordEntry entry;
 
   const _CredentialInspectionSheet({required this.entry});
 
   @override
-  State<_CredentialInspectionSheet> createState() => _CredentialInspectionSheetState();
+  ConsumerState<_CredentialInspectionSheet> createState() => _CredentialInspectionSheetState();
 }
 
-class _CredentialInspectionSheetState extends State<_CredentialInspectionSheet> {
+class _CredentialInspectionSheetState extends ConsumerState<_CredentialInspectionSheet> {
   bool _revealPassword = false;
 
   void _copyToClipboard(String text, String label) {
-    Clipboard.setData(ClipboardData(text: text));
-    HappyFeedback.show(
-      context,
-      message: '$label copied to clipboard',
-      icon: Icons.copy_rounded,
+    HapticFeedback.lightImpact();
+    ClipboardSecurityService.copySecure(
+      context: context,
+      ref: ref,
+      text: text,
+      label: label,
+      isSensitive: label.toLowerCase().contains('password') ||
+          label.toLowerCase().contains('key') ||
+          label.toLowerCase().contains('secret'),
     );
   }
 
@@ -518,6 +664,10 @@ class _CredentialInspectionSheetState extends State<_CredentialInspectionSheet> 
     final cardBg = isDark ? AppColors.darkCardSurface : AppColors.lightCardSurface;
     final inputBg = isDark ? AppColors.darkInputSurface : AppColors.lightInputSurface;
     final borderCol = isDark ? AppColors.darkBorder : AppColors.lightBorder;
+    final currentEntry = ref.watch(vaultPasswordsProvider).allEntries.firstWhere(
+          (e) => e.id == widget.entry.id,
+          orElse: () => widget.entry,
+        );
 
     return Container(
       padding: const EdgeInsets.fromLTRB(24, 16, 24, 32),
@@ -555,8 +705,8 @@ class _CredentialInspectionSheetState extends State<_CredentialInspectionSheet> 
                 ),
                 alignment: Alignment.center,
                 child: Text(
-                  widget.entry.title.isNotEmpty
-                      ? widget.entry.title.substring(0, 1).toUpperCase()
+                  currentEntry.title.isNotEmpty
+                      ? currentEntry.title.substring(0, 1).toUpperCase()
                       : 'P',
                   style: const TextStyle(
                     fontSize: 22,
@@ -571,14 +721,14 @@ class _CredentialInspectionSheetState extends State<_CredentialInspectionSheet> 
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      widget.entry.title,
+                      currentEntry.title,
                       style: const TextStyle(
                         fontSize: 18,
                         fontWeight: FontWeight.w800,
                       ),
                     ),
                     Text(
-                      widget.entry.category,
+                      currentEntry.category,
                       style: TextStyle(
                         fontSize: 12,
                         color: isDark ? AppColors.darkTextMuted : AppColors.lightTextMuted,
@@ -588,13 +738,27 @@ class _CredentialInspectionSheetState extends State<_CredentialInspectionSheet> 
                 ),
               ),
               IconButton(
+                icon: Icon(
+                  currentEntry.isFavorite ? Icons.star_rounded : Icons.star_outline_rounded,
+                  color: currentEntry.isFavorite
+                      ? Colors.amber
+                      : (isDark ? AppColors.darkTextMuted : AppColors.lightTextMuted),
+                  size: 22,
+                ),
+                tooltip: currentEntry.isFavorite ? 'Remove from favorites' : 'Add to favorites',
+                onPressed: () {
+                  HapticFeedback.selectionClick();
+                  ref.read(vaultPasswordsProvider.notifier).toggleFavorite(currentEntry.id);
+                },
+              ),
+              IconButton(
                 icon: const Icon(Icons.info_outline_rounded, size: 20),
                 tooltip: 'Credential Info',
                 onPressed: () {
                   Navigator.of(context).pop();
                   Navigator.of(context).push(
                     MaterialPageRoute<void>(
-                      builder: (_) => EditPasswordScreen(entry: widget.entry),
+                      builder: (_) => EditPasswordScreen(entry: currentEntry),
                     ),
                   );
                 },

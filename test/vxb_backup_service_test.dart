@@ -114,41 +114,6 @@ void main() {
 
   group('VxbBackupService React Native / Expo VaultX Compatibility', () {
     test('Successfully restores D:\\Projects\\apps\\VaultX format payload with fields array and service key', () async {
-      // Simulating a backup created by D:\Projects\apps\VaultX:
-      // It has "service" instead of "title", "holderName" instead of "cardholderName",
-      // and cards have "fields" array for expiry & CVV.
-      const simulatedExpoJson = '''
-      {
-        "passwords": [
-          {
-            "service": "AWS Console",
-            "username": "root@company.com",
-            "password": "AwsSecretPassword!",
-            "category": "Cloud",
-            "notes": "MFA required",
-            "createdAt": 1729500000000,
-            "modifiedAt": 1729500000000
-          }
-        ],
-        "cards": [
-          {
-            "id": "expo-card-1",
-            "type": "credit_card",
-            "title": "Corporate Amex",
-            "holderName": "JANE SMITH",
-            "number": "378282246310005",
-            "fields": [
-              {"label": "Expiry", "value": "08/29", "isSensitive": false},
-              {"label": "CVV", "value": "1234", "isSensitive": true}
-            ],
-            "gradient": ["#2E190E", "#9A5B23"],
-            "createdAt": 1729500000000
-          }
-        ]
-      }
-      ''';
-
-      // Encrypt it with our service (which uses standard CryptoJS OpenSSL EVP_BytesToKey)
       final encryptedBlob = await service.exportBackup(
         passwords: [
           VaultPasswordEntry(

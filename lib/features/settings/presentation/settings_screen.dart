@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:vaultx/core/theme/app_theme.dart';
 import 'package:vaultx/core/theme/theme_provider.dart';
 import 'package:vaultx/core/widgets/expressive/expressive.dart';
+import 'package:vaultx/core/services/clipboard_security_service.dart';
 import 'package:vaultx/core/services/screen_security_service.dart';
 import 'package:vaultx/features/auth/presentation/providers/auth_session_provider.dart';
 import 'package:vaultx/features/settings/presentation/change_master_password_dialog.dart';
@@ -159,6 +160,114 @@ void openAutoLockDialog(BuildContext context, WidgetRef ref) {
   );
 }
 
+/// Opens the modal selector for clipboard auto-clear timeout.
+void openClipboardTimeoutDialog(BuildContext context, WidgetRef ref) {
+  HapticFeedback.lightImpact();
+  showDialog<void>(
+    context: context,
+    builder: (ctx) {
+      return Consumer(
+        builder: (context, ref, _) {
+          final current = ref.watch(clipboardTimeoutProvider);
+          final isDark = Theme.of(context).brightness == Brightness.dark;
+          final dialogBg = isDark ? AppColors.darkCardSurface : AppColors.lightCardSurface;
+          final borderCol = isDark ? AppColors.darkBorder : AppColors.lightBorder;
+
+          return Dialog(
+            backgroundColor: dialogBg,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(24),
+              side: BorderSide(color: borderCol),
+            ),
+            child: Padding(
+              padding: const EdgeInsets.all(24),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      const Text(
+                        'Clipboard Auto-Clear',
+                        style: TextStyle(fontSize: 18, fontWeight: FontWeight.w700),
+                      ),
+                      IconButton(
+                        icon: const Icon(Icons.close_rounded, size: 20),
+                        onPressed: () => Navigator.of(ctx).pop(),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 6),
+                  Text(
+                    'Automatically wipe copied secrets from clipboard',
+                    style: TextStyle(
+                      fontSize: 13,
+                      color: isDark ? AppColors.darkTextMuted : AppColors.lightTextMuted,
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                  ...ClipboardTimeout.values.map((option) {
+                    final isSelected = current == option;
+                    final displayLabel = option == ClipboardTimeout.off
+                        ? 'Off (Never clear)'
+                        : '${option.label} (${option.duration.inSeconds} seconds)';
+                    return Padding(
+                      padding: const EdgeInsets.only(bottom: 8),
+                      child: InkWell(
+                        borderRadius: BorderRadius.circular(14),
+                        onTap: () {
+                          HapticFeedback.selectionClick();
+                          ref.read(clipboardTimeoutProvider.notifier).setDuration(option);
+                          Navigator.of(ctx).pop();
+                        },
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                          decoration: BoxDecoration(
+                            color: isSelected
+                                ? AppColors.primaryBlue.withAlpha(isDark ? 50 : 30)
+                                : (isDark ? AppColors.darkInputSurface : AppColors.lightInputSurface),
+                            borderRadius: BorderRadius.circular(14),
+                            border: Border.all(
+                              color: isSelected ? AppColors.primaryBlue : borderCol,
+                              width: isSelected ? 1.5 : 1.0,
+                            ),
+                          ),
+                          child: Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: [
+                              Text(
+                                displayLabel,
+                                style: TextStyle(
+                                  fontSize: 15,
+                                  fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
+                                  color: isSelected
+                                      ? AppColors.primaryBlue
+                                      : (isDark ? Colors.white : Colors.black87),
+                                ),
+                              ),
+                              if (isSelected)
+                                const Icon(
+                                  Icons.check_circle_rounded,
+                                  color: AppColors.primaryBlue,
+                                  size: 20,
+                                ),
+                            ],
+                          ),
+                        ),
+                      ),
+                    );
+                  }),
+                ],
+              ),
+            ),
+          );
+        },
+      );
+    },
+  );
+}
+
 /// Screen 8: Settings Hub Screen
 ///
 /// Compact, clear settings directory divided into General, Sync, Backup & Restore,
@@ -275,6 +384,7 @@ class GeneralSettingsScreen extends ConsumerWidget {
     final biometricEnabled = ref.watch(biometricPreferenceProvider);
     final authState = ref.watch(authSessionProvider);
     final screenSecurity = ref.watch(screenSecurityProvider);
+    final clipboardTimeout = ref.watch(clipboardTimeoutProvider);
 
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final cardBg = isDark ? AppColors.darkCardSurface : AppColors.lightCardSurface;
@@ -547,6 +657,27 @@ class GeneralSettingsScreen extends ConsumerWidget {
                           ref.read(screenSecurityProvider.notifier).setEnabled(val);
                         },
                       ),
+                    ),
+                    Divider(height: 1, color: borderCol),
+                    ListTile(
+                      leading: const Icon(Icons.content_paste_off_rounded, color: AppColors.primaryBlue),
+                      title: const Text('Clipboard Auto-Clear', style: TextStyle(fontWeight: FontWeight.w600)),
+                      subtitle: const Text('Auto-wipe secrets after timeout'),
+                      trailing: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Text(
+                            clipboardTimeout.label,
+                            style: TextStyle(
+                              color: mutedCol,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                          const SizedBox(width: 4),
+                          const Icon(Icons.chevron_right_rounded, size: 20),
+                        ],
+                      ),
+                      onTap: () => openClipboardTimeoutDialog(context, ref),
                     ),
                   ],
                 ),
