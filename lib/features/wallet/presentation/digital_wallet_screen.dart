@@ -158,11 +158,11 @@ class _DigitalWalletScreenState extends ConsumerState<DigitalWalletScreen> {
                     filled: true,
                     fillColor: inputBg,
                     border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(30),
+                      borderRadius: BorderRadius.circular(14),
                       borderSide: BorderSide(color: borderCol),
                     ),
                     enabledBorder: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(30),
+                      borderRadius: BorderRadius.circular(14),
                       borderSide: BorderSide(color: borderCol),
                     ),
                     contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
@@ -198,7 +198,7 @@ class _DigitalWalletScreenState extends ConsumerState<DigitalWalletScreen> {
                           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
                           decoration: BoxDecoration(
                             color: isSelected ? AppColors.primaryBlue : cardBg,
-                            borderRadius: BorderRadius.circular(20),
+                            borderRadius: BorderRadius.circular(12),
                             border: Border.all(
                               color: isSelected ? AppColors.primaryBlue : borderCol,
                               width: 1,
@@ -353,89 +353,19 @@ class _CardDetailsSheet extends StatelessWidget {
               ),
               const SizedBox(height: 20),
 
-              // Card Number
+              // Inset Grouped Card Information
               Container(
-                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
                 decoration: BoxDecoration(
                   color: inputBg,
-                  borderRadius: BorderRadius.circular(14),
+                  borderRadius: BorderRadius.circular(16),
+                  border: Border.all(color: borderCol),
                 ),
-                child: Row(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            'Card Number',
-                            style: TextStyle(
-                              fontSize: 11,
-                              fontWeight: FontWeight.w500,
-                              color: isDark ? AppColors.darkTextMuted : AppColors.lightTextMuted,
-                            ),
-                          ),
-                          Text(
-                            card.formattedNumber,
-                            style: const TextStyle(
-                              fontFamily: 'JetBrains Mono',
-                              fontSize: 15,
-                              fontWeight: FontWeight.w600,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                    IconButton(
-                      icon: const Icon(Icons.copy_rounded, size: 18),
-                      tooltip: 'Copy card number',
-                      onPressed: () => _copyToClipboard(context, card.cardNumber, 'Card number'),
-                    ),
-                  ],
-                ),
-              ),
-              const SizedBox(height: 10),
-
-              // Expiry & CVV Row
-              Row(
-                children: [
-                  Expanded(
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-                      decoration: BoxDecoration(
-                        color: inputBg,
-                        borderRadius: BorderRadius.circular(14),
-                      ),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            'Expires',
-                            style: TextStyle(
-                              fontSize: 11,
-                              fontWeight: FontWeight.w500,
-                              color: isDark ? AppColors.darkTextMuted : AppColors.lightTextMuted,
-                            ),
-                          ),
-                          Text(
-                            card.expiry,
-                            style: const TextStyle(
-                              fontFamily: 'JetBrains Mono',
-                              fontSize: 15,
-                              fontWeight: FontWeight.w600,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ),
-                  const SizedBox(width: 10),
-                  Expanded(
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-                      decoration: BoxDecoration(
-                        color: inputBg,
-                        borderRadius: BorderRadius.circular(14),
-                      ),
+                    // Card Number Row
+                    Padding(
+                      padding: const EdgeInsets.fromLTRB(16, 12, 10, 12),
                       child: Row(
                         children: [
                           Expanded(
@@ -443,15 +373,16 @@ class _CardDetailsSheet extends StatelessWidget {
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
                                 Text(
-                                  'CVV',
+                                  'Card Number',
                                   style: TextStyle(
                                     fontSize: 11,
                                     fontWeight: FontWeight.w500,
                                     color: isDark ? AppColors.darkTextMuted : AppColors.lightTextMuted,
                                   ),
                                 ),
+                                const SizedBox(height: 2),
                                 Text(
-                                  card.cvv,
+                                  card.formattedNumber,
                                   style: const TextStyle(
                                     fontFamily: 'JetBrains Mono',
                                     fontSize: 15,
@@ -463,14 +394,130 @@ class _CardDetailsSheet extends StatelessWidget {
                           ),
                           IconButton(
                             icon: const Icon(Icons.copy_rounded, size: 18),
-                            tooltip: 'Copy CVV',
-                            onPressed: () => _copyToClipboard(context, card.cvv, 'CVV'),
+                            tooltip: 'Copy card number',
+                            onPressed: () => _copyToClipboard(context, card.cardNumber, 'Card number'),
                           ),
                         ],
                       ),
                     ),
-                  ),
-                ],
+
+                    // Cardholder Name Row (if provided)
+                    if (card.cardholderName.isNotEmpty) ...[
+                      Divider(height: 1, indent: 16, endIndent: 16, color: borderCol.withAlpha(80)),
+                      Padding(
+                        padding: const EdgeInsets.fromLTRB(16, 12, 10, 12),
+                        child: Row(
+                          children: [
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    'Cardholder Name',
+                                    style: TextStyle(
+                                      fontSize: 11,
+                                      fontWeight: FontWeight.w500,
+                                      color: isDark ? AppColors.darkTextMuted : AppColors.lightTextMuted,
+                                    ),
+                                  ),
+                                  const SizedBox(height: 2),
+                                  Text(
+                                    card.cardholderName,
+                                    style: const TextStyle(
+                                      fontSize: 14,
+                                      fontWeight: FontWeight.w600,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                            IconButton(
+                              icon: const Icon(Icons.copy_rounded, size: 18),
+                              tooltip: 'Copy cardholder name',
+                              onPressed: () => _copyToClipboard(context, card.cardholderName, 'Cardholder'),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+
+                    Divider(height: 1, indent: 16, endIndent: 16, color: borderCol.withAlpha(80)),
+
+                    // Expiry & CVV Row
+                    Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                      child: Row(
+                        children: [
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  'Expires',
+                                  style: TextStyle(
+                                    fontSize: 11,
+                                    fontWeight: FontWeight.w500,
+                                    color: isDark ? AppColors.darkTextMuted : AppColors.lightTextMuted,
+                                  ),
+                                ),
+                                const SizedBox(height: 2),
+                                Text(
+                                  card.expiry,
+                                  style: const TextStyle(
+                                    fontFamily: 'JetBrains Mono',
+                                    fontSize: 15,
+                                    fontWeight: FontWeight.w600,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                          Container(
+                            width: 1,
+                            height: 28,
+                            color: borderCol.withAlpha(80),
+                            margin: const EdgeInsets.symmetric(horizontal: 12),
+                          ),
+                          Expanded(
+                            child: Row(
+                              children: [
+                                Expanded(
+                                  child: Column(
+                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    children: [
+                                      Text(
+                                        'CVV',
+                                        style: TextStyle(
+                                          fontSize: 11,
+                                          fontWeight: FontWeight.w500,
+                                          color: isDark ? AppColors.darkTextMuted : AppColors.lightTextMuted,
+                                        ),
+                                      ),
+                                      const SizedBox(height: 2),
+                                      Text(
+                                        card.cvv,
+                                        style: const TextStyle(
+                                          fontFamily: 'JetBrains Mono',
+                                          fontSize: 15,
+                                          fontWeight: FontWeight.w600,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                                IconButton(
+                                  icon: const Icon(Icons.copy_rounded, size: 18),
+                                  tooltip: 'Copy CVV',
+                                  onPressed: () => _copyToClipboard(context, card.cvv, 'CVV'),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
               ),
               const SizedBox(height: 20),
 

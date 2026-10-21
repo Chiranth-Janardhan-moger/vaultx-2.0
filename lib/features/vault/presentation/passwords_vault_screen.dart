@@ -142,12 +142,18 @@ class _PasswordsVaultScreenState extends ConsumerState<PasswordsVaultScreen> {
     final vaultState = ref.watch(vaultPasswordsProvider);
     final entries = vaultState.filteredEntries;
     final report = VaultWatchtowerEngine.audit(vaultState.allEntries);
-    final categories = ['All', '★ Favorites', ...vaultState.allCategories];
+    final categories = ['All', 'Favorites', ...vaultState.allCategories];
 
     final cardBg = isDark ? AppColors.darkCardSurface : AppColors.lightCardSurface;
     final inputBg = isDark ? AppColors.darkInputSurface : AppColors.lightInputSurface;
     final borderCol = isDark ? AppColors.darkBorder : AppColors.lightBorder;
     final mutedCol = isDark ? AppColors.darkTextMuted : AppColors.lightTextMuted;
+
+    final securityColor = report.healthScore < 50
+        ? AppColors.rose500
+        : report.healthScore < 80
+            ? AppColors.amber500
+            : AppColors.emerald500;
 
     return Scaffold(
       body: SafeArea(
@@ -162,7 +168,7 @@ class _PasswordsVaultScreenState extends ConsumerState<PasswordsVaultScreen> {
             // Top App Bar
             SliverToBoxAdapter(
               child: Padding(
-                padding: const EdgeInsets.fromLTRB(20, 16, 20, 12),
+                padding: const EdgeInsets.fromLTRB(20, 16, 20, 10),
                 child: Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
@@ -177,34 +183,6 @@ class _PasswordsVaultScreenState extends ConsumerState<PasswordsVaultScreen> {
                     Row(
                       mainAxisSize: MainAxisSize.min,
                       children: [
-                        // Vault Watchtower Shield Button
-                        Stack(
-                          clipBehavior: Clip.none,
-                          children: [
-                            ExpressiveIconButton.filled(
-                              onPressed: _openWatchtowerSheet,
-                              icon: const Icon(Icons.shield_outlined, size: 20),
-                              color: cardBg,
-                              foregroundColor: report.hasIssues ? AppColors.amber500 : AppColors.emerald500,
-                              tooltip: 'Security Audit',
-                            ),
-                            if (report.hasIssues)
-                              Positioned(
-                                top: 4,
-                                right: 4,
-                                child: Container(
-                                  width: 8,
-                                  height: 8,
-                                  decoration: const BoxDecoration(
-                                    color: AppColors.rose500,
-                                    shape: BoxShape.circle,
-                                  ),
-                                ),
-                              ),
-                          ],
-                        ),
-                        const SizedBox(width: 8),
-
                         // Compact Sort Menu
                         Container(
                           height: 40,
@@ -217,7 +195,7 @@ class _PasswordsVaultScreenState extends ConsumerState<PasswordsVaultScreen> {
                           child: PopupMenuButton<VaultSortOption>(
                             tooltip: 'Sort Options',
                             icon: Icon(
-                              Icons.sort_rounded,
+                              Icons.swap_vert_rounded,
                               size: 20,
                               color: isDark ? AppColors.darkTextPrimary : AppColors.lightTextPrimary,
                             ),
@@ -268,7 +246,7 @@ class _PasswordsVaultScreenState extends ConsumerState<PasswordsVaultScreen> {
                             },
                           ),
                         ),
-                        const SizedBox(width: 8),
+                        const SizedBox(width: 10),
 
                         // Add Password Button
                         ExpressiveIconButton.filled(
@@ -293,7 +271,7 @@ class _PasswordsVaultScreenState extends ConsumerState<PasswordsVaultScreen> {
                     ref.read(vaultPasswordsProvider.notifier).setSearchQuery(val);
                   },
                   decoration: InputDecoration(
-                    hintText: 'Search passwords...',
+                    hintText: 'Search passwords & accounts...',
                     prefixIcon: const Icon(Icons.search_rounded, size: 20),
                     suffixIcon: _searchController.text.isNotEmpty
                         ? IconButton(
@@ -307,11 +285,11 @@ class _PasswordsVaultScreenState extends ConsumerState<PasswordsVaultScreen> {
                     filled: true,
                     fillColor: inputBg,
                     border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(30),
+                      borderRadius: BorderRadius.circular(14),
                       borderSide: BorderSide(color: borderCol),
                     ),
                     enabledBorder: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(30),
+                      borderRadius: BorderRadius.circular(14),
                       borderSide: BorderSide(color: borderCol),
                     ),
                     contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
@@ -320,10 +298,108 @@ class _PasswordsVaultScreenState extends ConsumerState<PasswordsVaultScreen> {
               ),
             ),
 
+            // Apple-Style Inset Security Health Banner
+            if (report.totalCredentials > 0)
+              SliverToBoxAdapter(
+                child: Padding(
+                  padding: const EdgeInsets.fromLTRB(20, 8, 20, 4),
+                  child: Material(
+                    color: Colors.transparent,
+                    child: InkWell(
+                      borderRadius: BorderRadius.circular(16),
+                      onTap: _openWatchtowerSheet,
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 11),
+                        decoration: BoxDecoration(
+                          color: securityColor.withAlpha(isDark ? 28 : 18),
+                          borderRadius: BorderRadius.circular(16),
+                          border: Border.all(
+                            color: securityColor.withAlpha(isDark ? 80 : 50),
+                            width: 1,
+                          ),
+                        ),
+                        child: Row(
+                          children: [
+                            Container(
+                              width: 36,
+                              height: 36,
+                              decoration: BoxDecoration(
+                                color: securityColor.withAlpha(isDark ? 50 : 35),
+                                borderRadius: BorderRadius.circular(10),
+                              ),
+                              child: Icon(
+                                report.hasIssues ? Icons.shield_rounded : Icons.verified_user_rounded,
+                                size: 20,
+                                color: securityColor,
+                              ),
+                            ),
+                            const SizedBox(width: 12),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Row(
+                                    children: [
+                                      Text(
+                                        report.hasIssues
+                                            ? 'Security Recommendations'
+                                            : 'Vault Security Optimal',
+                                        style: TextStyle(
+                                          fontSize: 13,
+                                          fontWeight: FontWeight.w700,
+                                          color: securityColor,
+                                        ),
+                                      ),
+                                      if (report.hasIssues) ...[
+                                        const SizedBox(width: 6),
+                                        Container(
+                                          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1.5),
+                                          decoration: BoxDecoration(
+                                            color: securityColor.withAlpha(isDark ? 55 : 35),
+                                            borderRadius: BorderRadius.circular(6),
+                                          ),
+                                          child: Text(
+                                            '${report.totalIssues} ${report.totalIssues == 1 ? 'issue' : 'issues'}',
+                                            style: TextStyle(
+                                              fontSize: 10,
+                                              fontWeight: FontWeight.w800,
+                                              color: securityColor,
+                                            ),
+                                          ),
+                                        ),
+                                      ],
+                                    ],
+                                  ),
+                                  const SizedBox(height: 2),
+                                  Text(
+                                    report.hasIssues
+                                        ? '${report.healthScore}% Health Score • Tap to inspect and fix'
+                                        : '100% Health Score • Zero vulnerabilities detected',
+                                    style: TextStyle(
+                                      fontSize: 11.5,
+                                      color: isDark ? AppColors.darkTextMuted : AppColors.lightTextMuted,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                            Icon(
+                              Icons.chevron_right_rounded,
+                              size: 18,
+                              color: securityColor,
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+
             // Category Filter Pills
             SliverToBoxAdapter(
               child: SizedBox(
-                height: 52,
+                height: 50,
                 child: ListView.separated(
                   padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
                   scrollDirection: Axis.horizontal,
@@ -337,7 +413,7 @@ class _PasswordsVaultScreenState extends ConsumerState<PasswordsVaultScreen> {
                           padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
                           decoration: BoxDecoration(
                             color: cardBg,
-                            borderRadius: BorderRadius.circular(20),
+                            borderRadius: BorderRadius.circular(12),
                             border: Border.all(
                               color: AppColors.primaryBlue.withAlpha(140),
                               width: 1.2,
@@ -365,6 +441,7 @@ class _PasswordsVaultScreenState extends ConsumerState<PasswordsVaultScreen> {
 
                     final cat = categories[index];
                     final isSelected = vaultState.selectedCategory.toLowerCase() == cat.toLowerCase();
+                    final isFav = cat.toLowerCase() == 'favorites';
 
                     return Semantics(
                       button: true,
@@ -376,25 +453,38 @@ class _PasswordsVaultScreenState extends ConsumerState<PasswordsVaultScreen> {
                         },
                         child: AnimatedContainer(
                           duration: const Duration(milliseconds: 180),
-                          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
+                          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
                           decoration: BoxDecoration(
                             color: isSelected ? AppColors.primaryBlue : cardBg,
-                            borderRadius: BorderRadius.circular(20),
+                            borderRadius: BorderRadius.circular(12),
                             border: Border.all(
                               color: isSelected ? AppColors.primaryBlue : borderCol,
                               width: 1,
                             ),
                           ),
                           alignment: Alignment.center,
-                          child: Text(
-                            cat,
-                            style: TextStyle(
-                              fontSize: 13,
-                              fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
-                              color: isSelected
-                                  ? Colors.white
-                                  : (isDark ? AppColors.darkTextPrimary : AppColors.lightTextPrimary),
-                            ),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              if (isFav) ...[
+                                Icon(
+                                  Icons.star_rounded,
+                                  size: 15,
+                                  color: isSelected ? Colors.white : Colors.amber,
+                                ),
+                                const SizedBox(width: 5),
+                              ],
+                              Text(
+                                cat,
+                                style: TextStyle(
+                                  fontSize: 13,
+                                  fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
+                                  color: isSelected
+                                      ? Colors.white
+                                      : (isDark ? AppColors.darkTextPrimary : AppColors.lightTextPrimary),
+                                ),
+                              ),
+                            ],
                           ),
                         ),
                       ),
@@ -421,25 +511,25 @@ class _PasswordsVaultScreenState extends ConsumerState<PasswordsVaultScreen> {
                         margin: const EdgeInsets.only(bottom: 10),
                         child: Material(
                           color: cardBg,
-                          borderRadius: BorderRadius.circular(18),
+                          borderRadius: BorderRadius.circular(16),
                           child: InkWell(
-                            borderRadius: BorderRadius.circular(18),
+                            borderRadius: BorderRadius.circular(16),
                             onTap: () => _openInspectionSheet(entry),
                             child: Container(
-                              padding: const EdgeInsets.all(14),
+                              padding: const EdgeInsets.all(12),
                               decoration: BoxDecoration(
-                                borderRadius: BorderRadius.circular(18),
+                                borderRadius: BorderRadius.circular(16),
                                 border: Border.all(color: borderCol, width: 1),
                               ),
                               child: Row(
                                 children: [
                                   // Monogram Avatar
                                   Container(
-                                    width: 46,
-                                    height: 46,
+                                    width: 44,
+                                    height: 44,
                                     decoration: BoxDecoration(
-                                      color: AppColors.primaryBlue.withAlpha(25),
-                                      borderRadius: BorderRadius.circular(14),
+                                      color: AppColors.primaryBlue.withAlpha(isDark ? 35 : 22),
+                                      borderRadius: BorderRadius.circular(12),
                                     ),
                                     alignment: Alignment.center,
                                     child: Text(
@@ -447,41 +537,36 @@ class _PasswordsVaultScreenState extends ConsumerState<PasswordsVaultScreen> {
                                           ? entry.title.substring(0, 1).toUpperCase()
                                           : 'P',
                                       style: const TextStyle(
-                                        fontSize: 20,
+                                        fontSize: 19,
                                         fontWeight: FontWeight.w800,
                                         color: AppColors.primaryBlue,
                                       ),
                                     ),
                                   ),
-                                  const SizedBox(width: 14),
+                                  const SizedBox(width: 12),
 
-                                  // Title and Username
+                                  // Title, Username, and Inline Metadata
                                   Expanded(
                                     child: Column(
                                       crossAxisAlignment: CrossAxisAlignment.start,
                                       children: [
-                                        Row(
-                                          children: [
-                                            Flexible(
-                                              child: Text(
-                                                entry.title,
-                                                maxLines: 1,
-                                                overflow: TextOverflow.ellipsis,
-                                                style: const TextStyle(
-                                                  fontSize: 15,
-                                                  fontWeight: FontWeight.w700,
-                                                ),
-                                              ),
-                                            ),
-                                            if (entry.isFavorite) ...[
-                                              const SizedBox(width: 4),
-                                              const Icon(Icons.star_rounded, size: 14, color: Colors.amber),
-                                            ],
-                                          ],
+                                        Text(
+                                          entry.title,
+                                          maxLines: 1,
+                                          overflow: TextOverflow.ellipsis,
+                                          style: const TextStyle(
+                                            fontSize: 15,
+                                            fontWeight: FontWeight.w700,
+                                            letterSpacing: -0.2,
+                                          ),
                                         ),
                                         const SizedBox(height: 2),
                                         Text(
-                                          entry.username,
+                                          entry.username.isNotEmpty
+                                              ? entry.username
+                                              : (entry.email.isNotEmpty
+                                                  ? entry.email
+                                                  : (entry.isSecureNote ? 'Secure Note' : 'No username')),
                                           maxLines: 1,
                                           overflow: TextOverflow.ellipsis,
                                           style: TextStyle(
@@ -491,89 +576,100 @@ class _PasswordsVaultScreenState extends ConsumerState<PasswordsVaultScreen> {
                                                 : AppColors.lightTextMuted,
                                           ),
                                         ),
-                                      ],
-                                    ),
-                                  ),
-
-                                   // Category Pill, Timestamp & Disclosure Chevron
-                                  Column(
-                                    crossAxisAlignment: CrossAxisAlignment.end,
-                                    children: [
-                                      Row(
-                                        mainAxisSize: MainAxisSize.min,
-                                        children: [
-                                          if (entry.hasTotp) ...[
-                                            Container(
-                                              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                                              decoration: BoxDecoration(
-                                                color: AppColors.primaryBlue.withAlpha(isDark ? 45 : 30),
-                                                borderRadius: BorderRadius.circular(6),
+                                        const SizedBox(height: 5),
+                                        Row(
+                                          children: [
+                                            if (entry.hasTotp) ...[
+                                              Container(
+                                                padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1.5),
+                                                decoration: BoxDecoration(
+                                                  color: AppColors.primaryBlue.withAlpha(isDark ? 45 : 30),
+                                                  borderRadius: BorderRadius.circular(5),
+                                                ),
+                                                child: const Text(
+                                                  '2FA',
+                                                  style: TextStyle(
+                                                    fontSize: 9.5,
+                                                    fontWeight: FontWeight.w800,
+                                                    color: AppColors.primaryBlue,
+                                                  ),
+                                                ),
                                               ),
-                                              child: const Text(
-                                                '2FA',
+                                              const SizedBox(width: 6),
+                                            ],
+                                            Flexible(
+                                              child: Text(
+                                                entry.category,
+                                                maxLines: 1,
+                                                overflow: TextOverflow.ellipsis,
                                                 style: TextStyle(
-                                                  fontSize: 10,
-                                                  fontWeight: FontWeight.w700,
-                                                  color: AppColors.primaryBlue,
+                                                  fontSize: 11,
+                                                  fontWeight: FontWeight.w600,
+                                                  color: isDark
+                                                      ? AppColors.darkTextMuted
+                                                      : AppColors.lightTextMuted,
                                                 ),
                                               ),
                                             ),
                                             const SizedBox(width: 6),
-                                          ],
-                                          Container(
-                                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                                            decoration: BoxDecoration(
-                                              color: inputBg,
-                                              borderRadius: BorderRadius.circular(8),
+                                            Text(
+                                              '•',
+                                              style: TextStyle(
+                                                fontSize: 10,
+                                                color: isDark ? Colors.white24 : Colors.black26,
+                                              ),
                                             ),
-                                            child: Text(
-                                              entry.category,
+                                            const SizedBox(width: 6),
+                                            Text(
+                                              _formatUpdatedAt(entry.updatedAt),
                                               style: TextStyle(
                                                 fontSize: 11,
-                                                fontWeight: FontWeight.w600,
                                                 color: isDark
-                                                    ? AppColors.darkTextMuted
-                                                    : AppColors.lightTextMuted,
+                                                    ? AppColors.darkTextMuted.withAlpha(180)
+                                                    : AppColors.lightTextMuted.withAlpha(180),
                                               ),
                                             ),
-                                          ),
-                                          const SizedBox(width: 4),
-                                          GestureDetector(
-                                            behavior: HitTestBehavior.opaque,
-                                            onTap: () {
-                                              HapticFeedback.selectionClick();
-                                              ref.read(vaultPasswordsProvider.notifier).toggleFavorite(entry.id);
-                                            },
-                                            child: Padding(
-                                              padding: const EdgeInsets.symmetric(horizontal: 2, vertical: 2),
-                                              child: Icon(
-                                                entry.isFavorite ? Icons.star_rounded : Icons.star_outline_rounded,
-                                                color: entry.isFavorite
-                                                    ? Colors.amber
-                                                    : (isDark ? AppColors.darkTextMuted : AppColors.lightTextMuted),
-                                                size: 19,
-                                              ),
-                                            ),
-                                          ),
-                                          const SizedBox(width: 4),
-                                          Icon(
-                                            Icons.chevron_right_rounded,
-                                            color: isDark
-                                                ? AppColors.darkTextMuted
-                                                : AppColors.lightTextMuted,
-                                            size: 20,
-                                          ),
-                                        ],
-                                      ),
-                                      const SizedBox(height: 4),
-                                      Text(
-                                        _formatUpdatedAt(entry.updatedAt),
-                                        style: TextStyle(
-                                          fontSize: 10,
-                                          color: isDark
-                                              ? AppColors.darkTextMuted
-                                              : AppColors.lightTextMuted,
+                                          ],
                                         ),
+                                      ],
+                                    ),
+                                  ),
+                                  const SizedBox(width: 8),
+
+                                  // Trailing Actions: Favorite Star Button & Chevron
+                                  Row(
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      GestureDetector(
+                                        behavior: HitTestBehavior.opaque,
+                                        onTap: () {
+                                          HapticFeedback.selectionClick();
+                                          ref.read(vaultPasswordsProvider.notifier).toggleFavorite(entry.id);
+                                        },
+                                        child: Container(
+                                          width: 36,
+                                          height: 36,
+                                          alignment: Alignment.center,
+                                          decoration: BoxDecoration(
+                                            shape: BoxShape.circle,
+                                            color: entry.isFavorite
+                                                ? Colors.amber.withAlpha(isDark ? 35 : 25)
+                                                : Colors.transparent,
+                                          ),
+                                          child: Icon(
+                                            entry.isFavorite ? Icons.star_rounded : Icons.star_outline_rounded,
+                                            size: 20,
+                                            color: entry.isFavorite
+                                                ? Colors.amber
+                                                : (isDark ? Colors.white38 : Colors.black38),
+                                          ),
+                                        ),
+                                      ),
+                                      const SizedBox(width: 2),
+                                      Icon(
+                                        Icons.chevron_right_rounded,
+                                        size: 18,
+                                        color: isDark ? Colors.white30 : Colors.black26,
                                       ),
                                     ],
                                   ),
@@ -599,19 +695,33 @@ class _PasswordsVaultScreenState extends ConsumerState<PasswordsVaultScreen> {
                   mainAxisSize: MainAxisSize.min,
                   children: [
                     Icon(
-                      Icons.search_off_rounded,
+                      vaultState.selectedCategory.toLowerCase() == 'favorites'
+                          ? Icons.star_border_rounded
+                          : Icons.search_off_rounded,
                       size: 48,
                       color: isDark ? AppColors.darkTextMuted : AppColors.lightTextMuted,
                     ),
                     const SizedBox(height: 12),
                     Text(
-                      'No passwords found',
+                      vaultState.selectedCategory.toLowerCase() == 'favorites'
+                          ? 'No favorite credentials'
+                          : 'No passwords found',
                       style: TextStyle(
                         fontSize: 16,
                         fontWeight: FontWeight.w600,
                         color: isDark ? AppColors.darkTextMuted : AppColors.lightTextMuted,
                       ),
                     ),
+                    if (vaultState.selectedCategory.toLowerCase() == 'favorites') ...[
+                      const SizedBox(height: 4),
+                      Text(
+                        'Tap the star on any card to pin your favorites here.',
+                        style: TextStyle(
+                          fontSize: 13,
+                          color: isDark ? AppColors.darkTextMuted : AppColors.lightTextMuted,
+                        ),
+                      ),
+                    ],
                   ],
                 ),
               ),
@@ -658,19 +768,58 @@ class _CredentialInspectionSheetState extends ConsumerState<_CredentialInspectio
     return '${dt.day} ${months[dt.month - 1]} ${dt.year}, $hour:$minute $period';
   }
 
+  String _formatRelativeDate(DateTime dt) {
+    final now = DateTime.now();
+    final today = DateTime(now.year, now.month, now.day);
+    final yesterday = today.subtract(const Duration(days: 1));
+    final date = DateTime(dt.year, dt.month, dt.day);
+
+    final hour = dt.hour % 12 == 0 ? 12 : dt.hour % 12;
+    final minute = dt.minute.toString().padLeft(2, '0');
+    final period = dt.hour >= 12 ? 'PM' : 'AM';
+    final time = '$hour:$minute $period';
+
+    if (date == today) return 'Today, $time';
+    if (date == yesterday) return 'Yesterday, $time';
+
+    const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+    return '${dt.day} ${months[dt.month - 1]}, $time';
+  }
+
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final cardBg = isDark ? AppColors.darkCardSurface : AppColors.lightCardSurface;
     final inputBg = isDark ? AppColors.darkInputSurface : AppColors.lightInputSurface;
     final borderCol = isDark ? AppColors.darkBorder : AppColors.lightBorder;
+    final mutedCol = isDark ? AppColors.darkTextMuted : AppColors.lightTextMuted;
     final currentEntry = ref.watch(vaultPasswordsProvider).allEntries.firstWhere(
           (e) => e.id == widget.entry.id,
           orElse: () => widget.entry,
         );
 
+    final entropy = VaultWatchtowerEngine.calculateEntropy(currentEntry.password);
+    final strengthColor = entropy >= 60
+        ? AppColors.emerald500
+        : entropy >= 45
+            ? AppColors.amber500
+            : AppColors.rose500;
+    final strengthLabel = entropy >= 60
+        ? 'Strong (${entropy.toStringAsFixed(0)} bits)'
+        : entropy >= 45
+            ? 'Medium (${entropy.toStringAsFixed(0)} bits)'
+            : 'Weak (${entropy.toStringAsFixed(0)} bits)';
+
     return Container(
-      padding: const EdgeInsets.fromLTRB(24, 16, 24, 32),
+      constraints: BoxConstraints(
+        maxHeight: MediaQuery.of(context).size.height * 0.90,
+      ),
+      padding: EdgeInsets.fromLTRB(
+        20,
+        14,
+        20,
+        24 + MediaQuery.of(context).viewInsets.bottom,
+      ),
       decoration: BoxDecoration(
         color: cardBg,
         borderRadius: const BorderRadius.vertical(top: Radius.circular(28)),
@@ -680,7 +829,7 @@ class _CredentialInspectionSheetState extends ConsumerState<_CredentialInspectio
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          // Drag Handle
+          // Apple Drag Handle
           Center(
             child: Container(
               width: 36,
@@ -691,7 +840,7 @@ class _CredentialInspectionSheetState extends ConsumerState<_CredentialInspectio
               ),
             ),
           ),
-          const SizedBox(height: 16),
+          const SizedBox(height: 14),
 
           // Header
           Row(
@@ -700,8 +849,8 @@ class _CredentialInspectionSheetState extends ConsumerState<_CredentialInspectio
                 width: 48,
                 height: 48,
                 decoration: BoxDecoration(
-                  color: AppColors.primaryBlue.withAlpha(30),
-                  borderRadius: BorderRadius.circular(16),
+                  color: AppColors.primaryBlue.withAlpha(isDark ? 35 : 22),
+                  borderRadius: BorderRadius.circular(14),
                 ),
                 alignment: Alignment.center,
                 child: Text(
@@ -722,17 +871,33 @@ class _CredentialInspectionSheetState extends ConsumerState<_CredentialInspectio
                   children: [
                     Text(
                       currentEntry.title,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
                       style: const TextStyle(
                         fontSize: 18,
                         fontWeight: FontWeight.w800,
+                        letterSpacing: -0.3,
                       ),
                     ),
-                    Text(
-                      currentEntry.category,
-                      style: TextStyle(
-                        fontSize: 12,
-                        color: isDark ? AppColors.darkTextMuted : AppColors.lightTextMuted,
-                      ),
+                    const SizedBox(height: 2),
+                    Row(
+                      children: [
+                        Text(
+                          currentEntry.category,
+                          style: const TextStyle(
+                            fontSize: 12,
+                            fontWeight: FontWeight.w600,
+                            color: AppColors.primaryBlue,
+                          ),
+                        ),
+                        Text(
+                          ' • ${_formatRelativeDate(currentEntry.updatedAt)}',
+                          style: TextStyle(
+                            fontSize: 11.5,
+                            color: mutedCol,
+                          ),
+                        ),
+                      ],
                     ),
                   ],
                 ),
@@ -742,8 +907,8 @@ class _CredentialInspectionSheetState extends ConsumerState<_CredentialInspectio
                   currentEntry.isFavorite ? Icons.star_rounded : Icons.star_outline_rounded,
                   color: currentEntry.isFavorite
                       ? Colors.amber
-                      : (isDark ? AppColors.darkTextMuted : AppColors.lightTextMuted),
-                  size: 22,
+                      : mutedCol,
+                  size: 24,
                 ),
                 tooltip: currentEntry.isFavorite ? 'Remove from favorites' : 'Add to favorites',
                 onPressed: () {
@@ -752,7 +917,7 @@ class _CredentialInspectionSheetState extends ConsumerState<_CredentialInspectio
                 },
               ),
               IconButton(
-                icon: const Icon(Icons.info_outline_rounded, size: 20),
+                icon: const Icon(Icons.info_outline_rounded, size: 22),
                 tooltip: 'Credential Info',
                 onPressed: () {
                   Navigator.of(context).pop();
@@ -765,340 +930,413 @@ class _CredentialInspectionSheetState extends ConsumerState<_CredentialInspectio
               ),
             ],
           ),
-          const SizedBox(height: 20),
-
-          // Real-time 2FA TOTP Authenticator Card
-          if (widget.entry.hasTotp) ...[
-            TotpCodeWidget(
-              secret: widget.entry.totpSecret,
-              accountLabel: widget.entry.username.isNotEmpty ? widget.entry.username : widget.entry.title,
-            ),
-            const SizedBox(height: 14),
-          ],
-
-          // Username Tile
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-            decoration: BoxDecoration(
-              color: inputBg,
-              borderRadius: BorderRadius.circular(14),
-            ),
-            child: Row(
-              children: [
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        'Username',
-                        style: TextStyle(
-                          fontSize: 11,
-                          fontWeight: FontWeight.w500,
-                          color: isDark ? AppColors.darkTextMuted : AppColors.lightTextMuted,
-                        ),
-                      ),
-                      Text(
-                        widget.entry.username,
-                        style: const TextStyle(
-                          fontSize: 14,
-                          fontWeight: FontWeight.w600,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-                IconButton(
-                  icon: const Icon(Icons.copy_rounded, size: 18),
-                  tooltip: 'Copy username',
-                  onPressed: () => _copyToClipboard(widget.entry.username, 'Username'),
-                ),
-              ],
-            ),
-          ),
-          const SizedBox(height: 10),
-
-          // Password Tile with Reveal Toggle
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-            decoration: BoxDecoration(
-              color: inputBg,
-              borderRadius: BorderRadius.circular(14),
-            ),
-            child: Row(
-              children: [
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        'Password',
-                        style: TextStyle(
-                          fontSize: 11,
-                          fontWeight: FontWeight.w500,
-                          color: isDark ? AppColors.darkTextMuted : AppColors.lightTextMuted,
-                        ),
-                      ),
-                      Text(
-                        _revealPassword
-                            ? widget.entry.password
-                            : '••••••••••••••••',
-                        style: const TextStyle(
-                          fontFamily: 'JetBrains Mono',
-                          fontSize: 14,
-                          fontWeight: FontWeight.w600,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-                IconButton(
-                  icon: Icon(
-                    _revealPassword
-                        ? Icons.visibility_off_rounded
-                        : Icons.visibility_rounded,
-                    size: 18,
-                  ),
-                  tooltip: _revealPassword ? 'Mask password' : 'Show password',
-                  onPressed: () {
-                    setState(() => _revealPassword = !_revealPassword);
-                  },
-                ),
-                IconButton(
-                  icon: const Icon(Icons.copy_rounded, size: 18),
-                  tooltip: 'Copy password',
-                  onPressed: () => _copyToClipboard(widget.entry.password, 'Password'),
-                ),
-              ],
-            ),
-          ),
           const SizedBox(height: 16),
 
-          // Website URL Tile (shown only if provided)
-          if (widget.entry.websiteUrl.isNotEmpty) ...[
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-              decoration: BoxDecoration(
-                color: inputBg,
-                borderRadius: BorderRadius.circular(14),
-              ),
-              child: Row(
-                children: [
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          'Website URL',
-                          style: TextStyle(
-                            fontSize: 11,
-                            fontWeight: FontWeight.w500,
-                            color: isDark ? AppColors.darkTextMuted : AppColors.lightTextMuted,
-                          ),
-                        ),
-                        Text(
-                          widget.entry.websiteUrl,
-                          style: const TextStyle(
-                            fontSize: 14,
-                            fontWeight: FontWeight.w600,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                  IconButton(
-                    icon: const Icon(Icons.copy_rounded, size: 18),
-                    tooltip: 'Copy URL',
-                    onPressed: () => _copyToClipboard(widget.entry.websiteUrl, 'URL'),
-                  ),
-                ],
-              ),
-            ),
-            const SizedBox(height: 10),
-          ],
-
-          // Notes Tile (shown only if provided)
-          if (widget.entry.notes.isNotEmpty) ...[
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-              decoration: BoxDecoration(
-                color: inputBg,
-                borderRadius: BorderRadius.circular(14),
-              ),
+          // Scrollable Content
+          Flexible(
+            child: SingleChildScrollView(
+              physics: const BouncingScrollPhysics(),
               child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
+                crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  Text(
-                    'Notes',
-                    style: TextStyle(
-                      fontSize: 11,
-                      fontWeight: FontWeight.w500,
-                      color: isDark ? AppColors.darkTextMuted : AppColors.lightTextMuted,
+                  // Group 1: Login Credentials (Inset Grouped Card)
+                  Container(
+                    decoration: BoxDecoration(
+                      color: inputBg,
+                      borderRadius: BorderRadius.circular(16),
+                      border: Border.all(color: borderCol),
                     ),
-                  ),
-                  const SizedBox(height: 4),
-                  Text(
-                    widget.entry.notes,
-                    style: const TextStyle(
-                      fontSize: 14,
-                      fontWeight: FontWeight.w500,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            const SizedBox(height: 10),
-          ],
-
-          // Timestamps Section: Created & Edited Date & Time
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-            decoration: BoxDecoration(
-              color: inputBg,
-              borderRadius: BorderRadius.circular(14),
-            ),
-            child: Row(
-              children: [
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        'Created',
-                        style: TextStyle(
-                          fontSize: 11,
-                          fontWeight: FontWeight.w500,
-                          color: isDark ? AppColors.darkTextMuted : AppColors.lightTextMuted,
-                        ),
-                      ),
-                      const SizedBox(height: 2),
-                      Text(
-                        _formatDateTime(widget.entry.createdAt),
-                        style: TextStyle(
-                          fontSize: 12,
-                          fontWeight: FontWeight.w600,
-                          color: isDark ? AppColors.darkTextPrimary : AppColors.lightTextPrimary,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-                Container(
-                  width: 1,
-                  height: 28,
-                  color: borderCol,
-                  margin: const EdgeInsets.symmetric(horizontal: 8),
-                ),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        'Edited',
-                        style: TextStyle(
-                          fontSize: 11,
-                          fontWeight: FontWeight.w500,
-                          color: isDark ? AppColors.darkTextMuted : AppColors.lightTextMuted,
-                        ),
-                      ),
-                      const SizedBox(height: 2),
-                      Text(
-                        _formatDateTime(widget.entry.updatedAt),
-                        style: TextStyle(
-                          fontSize: 12,
-                          fontWeight: FontWeight.w600,
-                          color: isDark ? AppColors.darkTextPrimary : AppColors.lightTextPrimary,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ],
-            ),
-          ),
-          const SizedBox(height: 16),
-
-          // Delete Password Button
-          Consumer(
-            builder: (context, ref, _) {
-              return Material(
-                color: isDark
-                    ? AppColors.rose950.withAlpha(80)
-                    : AppColors.rose500.withAlpha(24),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(16),
-                  side: BorderSide(
-                    color: AppColors.rose500.withAlpha(isDark ? 80 : 160),
-                  ),
-                ),
-                clipBehavior: Clip.antiAlias,
-                child: InkWell(
-                  onTap: () {
-                    HapticFeedback.mediumImpact();
-                    showDialog<void>(
-                      context: context,
-                      builder: (ctx) => AlertDialog(
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(20),
-                        ),
-                        title: const Text(
-                          'Delete Password?',
-                          style: TextStyle(fontWeight: FontWeight.w700),
-                        ),
-                        content: Text(
-                          'This will permanently remove "${widget.entry.title}" from your vault.',
-                        ),
-                        actions: [
-                          TextButton(
-                            onPressed: () => Navigator.of(ctx).pop(),
-                            child: const Text('Cancel'),
-                          ),
-                          FilledButton(
-                            style: FilledButton.styleFrom(
-                              backgroundColor: AppColors.rose500,
-                              foregroundColor: Colors.white,
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(12),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        // Username Row
+                        Padding(
+                          padding: const EdgeInsets.fromLTRB(16, 12, 10, 12),
+                          child: Row(
+                            children: [
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      'Username',
+                                      style: TextStyle(
+                                        fontSize: 11,
+                                        fontWeight: FontWeight.w500,
+                                        color: mutedCol,
+                                      ),
+                                    ),
+                                    const SizedBox(height: 2),
+                                    Text(
+                                      widget.entry.username.isNotEmpty
+                                          ? widget.entry.username
+                                          : 'No username',
+                                      style: const TextStyle(
+                                        fontSize: 15,
+                                        fontWeight: FontWeight.w600,
+                                      ),
+                                    ),
+                                  ],
+                                ),
                               ),
+                              if (widget.entry.username.isNotEmpty)
+                                IconButton(
+                                  icon: const Icon(Icons.copy_rounded, size: 18),
+                                  tooltip: 'Copy username',
+                                  onPressed: () => _copyToClipboard(widget.entry.username, 'Username'),
+                                ),
+                            ],
+                          ),
+                        ),
+                        Divider(height: 1, indent: 16, endIndent: 16, color: borderCol.withAlpha(80)),
+
+                        // Password Row
+                        Padding(
+                          padding: const EdgeInsets.fromLTRB(16, 12, 10, 12),
+                          child: Row(
+                            children: [
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      'Password',
+                                      style: TextStyle(
+                                        fontSize: 11,
+                                        fontWeight: FontWeight.w500,
+                                        color: mutedCol,
+                                      ),
+                                    ),
+                                    const SizedBox(height: 2),
+                                    Text(
+                                      _revealPassword
+                                          ? widget.entry.password
+                                          : '••••••••••••••••',
+                                      style: const TextStyle(
+                                        fontFamily: 'JetBrains Mono',
+                                        fontSize: 15,
+                                        fontWeight: FontWeight.w600,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                              IconButton(
+                                icon: Icon(
+                                  _revealPassword
+                                      ? Icons.visibility_off_rounded
+                                      : Icons.visibility_rounded,
+                                  size: 18,
+                                ),
+                                tooltip: _revealPassword ? 'Mask password' : 'Show password',
+                                onPressed: () {
+                                  setState(() => _revealPassword = !_revealPassword);
+                                },
+                              ),
+                              IconButton(
+                                icon: const Icon(Icons.copy_rounded, size: 18),
+                                tooltip: 'Copy password',
+                                onPressed: () => _copyToClipboard(widget.entry.password, 'Password'),
+                              ),
+                            ],
+                          ),
+                        ),
+
+                        // Security Entropy Evaluation Row
+                        if (widget.entry.password.isNotEmpty) ...[
+                          Divider(height: 1, indent: 16, endIndent: 16, color: borderCol.withAlpha(80)),
+                          Padding(
+                            padding: const EdgeInsets.fromLTRB(16, 10, 16, 10),
+                            child: Row(
+                              children: [
+                                Container(
+                                  width: 8,
+                                  height: 8,
+                                  decoration: BoxDecoration(
+                                    color: strengthColor,
+                                    shape: BoxShape.circle,
+                                  ),
+                                ),
+                                const SizedBox(width: 8),
+                                Text(
+                                  'Security: $strengthLabel',
+                                  style: TextStyle(
+                                    fontSize: 12,
+                                    fontWeight: FontWeight.w600,
+                                    color: strengthColor,
+                                  ),
+                                ),
+                              ],
                             ),
-                            onPressed: () {
-                              ref
-                                  .read(vaultPasswordsProvider.notifier)
-                                  .deletePassword(widget.entry.id);
-                              Navigator.of(ctx).pop();
-                              Navigator.of(context).pop();
-                              HapticFeedback.heavyImpact();
-                            },
-                            child: const Text('Delete'),
                           ),
                         ],
-                      ),
-                    );
-                  },
-                  child: Padding(
-                    padding: const EdgeInsets.symmetric(vertical: 14),
-                    child: Row(
-                      mainAxisAlignment: MainAxisAlignment.center,
+                      ],
+                    ),
+                  ),
+
+                  // Real-time 2FA TOTP Authenticator Card
+                  if (widget.entry.hasTotp) ...[
+                    const SizedBox(height: 14),
+                    TotpCodeWidget(
+                      secret: widget.entry.totpSecret,
+                      accountLabel: widget.entry.username.isNotEmpty ? widget.entry.username : widget.entry.title,
+                    ),
+                  ],
+
+                  // Group 2: Details & Notes (Inset Grouped Card)
+                  const SizedBox(height: 14),
+                  Container(
+                    decoration: BoxDecoration(
+                      color: inputBg,
+                      borderRadius: BorderRadius.circular(16),
+                      border: Border.all(color: borderCol),
+                    ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
                       children: [
-                        Icon(
-                          Icons.delete_outline_rounded,
-                          size: 18,
-                          color: isDark ? AppColors.rose400 : const Color(0xFFBE123C),
-                        ),
-                        const SizedBox(width: 8),
-                        Text(
-                          'Delete Password',
-                          style: TextStyle(
-                            fontSize: 14,
-                            fontWeight: FontWeight.w700,
-                            color: isDark ? AppColors.rose400 : const Color(0xFFBE123C),
+                        if (widget.entry.websiteUrl.isNotEmpty) ...[
+                          Padding(
+                            padding: const EdgeInsets.fromLTRB(16, 12, 10, 12),
+                            child: Row(
+                              children: [
+                                Expanded(
+                                  child: Column(
+                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    children: [
+                                      Text(
+                                        'Website URL',
+                                        style: TextStyle(
+                                          fontSize: 11,
+                                          fontWeight: FontWeight.w500,
+                                          color: mutedCol,
+                                        ),
+                                      ),
+                                      const SizedBox(height: 2),
+                                      Text(
+                                        widget.entry.websiteUrl,
+                                        style: const TextStyle(
+                                          fontSize: 14,
+                                          fontWeight: FontWeight.w600,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                                IconButton(
+                                  icon: const Icon(Icons.copy_rounded, size: 18),
+                                  tooltip: 'Copy URL',
+                                  onPressed: () => _copyToClipboard(widget.entry.websiteUrl, 'URL'),
+                                ),
+                              ],
+                            ),
+                          ),
+                          Divider(height: 1, indent: 16, endIndent: 16, color: borderCol.withAlpha(80)),
+                        ],
+
+                        if (widget.entry.notes.isNotEmpty) ...[
+                          Padding(
+                            padding: const EdgeInsets.all(16),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  'Notes',
+                                  style: TextStyle(
+                                    fontSize: 11,
+                                    fontWeight: FontWeight.w500,
+                                    color: mutedCol,
+                                  ),
+                                ),
+                                const SizedBox(height: 4),
+                                Text(
+                                  widget.entry.notes,
+                                  style: const TextStyle(
+                                    fontSize: 14,
+                                    fontWeight: FontWeight.w500,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                          Divider(height: 1, indent: 16, endIndent: 16, color: borderCol.withAlpha(80)),
+                        ],
+
+                        // Timestamps Row
+                        Padding(
+                          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                          child: Row(
+                            children: [
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      'Created',
+                                      style: TextStyle(
+                                        fontSize: 11,
+                                        fontWeight: FontWeight.w500,
+                                        color: mutedCol,
+                                      ),
+                                    ),
+                                    const SizedBox(height: 2),
+                                    Text(
+                                      _formatDateTime(widget.entry.createdAt),
+                                      style: TextStyle(
+                                        fontSize: 12,
+                                        fontWeight: FontWeight.w600,
+                                        color: isDark ? AppColors.darkTextPrimary : AppColors.lightTextPrimary,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                              Container(
+                                width: 1,
+                                height: 26,
+                                color: borderCol,
+                                margin: const EdgeInsets.symmetric(horizontal: 10),
+                              ),
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      'Edited',
+                                      style: TextStyle(
+                                        fontSize: 11,
+                                        fontWeight: FontWeight.w500,
+                                        color: mutedCol,
+                                      ),
+                                    ),
+                                    const SizedBox(height: 2),
+                                    Text(
+                                      _formatDateTime(widget.entry.updatedAt),
+                                      style: TextStyle(
+                                        fontSize: 12,
+                                        fontWeight: FontWeight.w600,
+                                        color: isDark ? AppColors.darkTextPrimary : AppColors.lightTextPrimary,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ],
                           ),
                         ),
                       ],
                     ),
                   ),
-                ),
-              );
-            },
+
+                  const SizedBox(height: 20),
+
+                  // Edit Credential Primary Button
+                  FilledButton.icon(
+                    style: FilledButton.styleFrom(
+                      backgroundColor: AppColors.primaryBlue,
+                      foregroundColor: Colors.white,
+                      minimumSize: const Size.fromHeight(48),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(14),
+                      ),
+                    ),
+                    icon: const Icon(Icons.edit_rounded, size: 18),
+                    label: const Text(
+                      'Edit Credential',
+                      style: TextStyle(fontSize: 14, fontWeight: FontWeight.w700),
+                    ),
+                    onPressed: () {
+                      Navigator.of(context).pop();
+                      Navigator.of(context).push(
+                        MaterialPageRoute<void>(
+                          builder: (_) => EditPasswordScreen(entry: currentEntry),
+                        ),
+                      );
+                    },
+                  ),
+                  const SizedBox(height: 10),
+
+                  // Delete Credential Button
+                  Material(
+                    color: isDark
+                        ? AppColors.rose950.withAlpha(70)
+                        : AppColors.rose500.withAlpha(20),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(14),
+                      side: BorderSide(
+                        color: AppColors.rose500.withAlpha(isDark ? 80 : 140),
+                      ),
+                    ),
+                    clipBehavior: Clip.antiAlias,
+                    child: InkWell(
+                      onTap: () {
+                        HapticFeedback.mediumImpact();
+                        showDialog<void>(
+                          context: context,
+                          builder: (ctx) => AlertDialog(
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(20),
+                            ),
+                            title: const Text(
+                              'Delete Password?',
+                              style: TextStyle(fontWeight: FontWeight.w700),
+                            ),
+                            content: Text(
+                              'This will permanently remove "${widget.entry.title}" from your vault.',
+                            ),
+                            actions: [
+                              TextButton(
+                                onPressed: () => Navigator.of(ctx).pop(),
+                                child: const Text('Cancel'),
+                              ),
+                              FilledButton(
+                                style: FilledButton.styleFrom(
+                                  backgroundColor: AppColors.rose500,
+                                  foregroundColor: Colors.white,
+                                  shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(12),
+                                  ),
+                                ),
+                                onPressed: () {
+                                  ref
+                                      .read(vaultPasswordsProvider.notifier)
+                                      .deletePassword(widget.entry.id);
+                                  Navigator.of(ctx).pop();
+                                  Navigator.of(context).pop();
+                                  HapticFeedback.heavyImpact();
+                                },
+                                child: const Text('Delete'),
+                              ),
+                            ],
+                          ),
+                        );
+                      },
+                      child: Padding(
+                        padding: const EdgeInsets.symmetric(vertical: 13),
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Icon(
+                              Icons.delete_outline_rounded,
+                              size: 18,
+                              color: isDark ? AppColors.rose400 : const Color(0xFFBE123C),
+                            ),
+                            const SizedBox(width: 8),
+                            Text(
+                              'Delete Password',
+                              style: TextStyle(
+                                fontSize: 14,
+                                fontWeight: FontWeight.w700,
+                                color: isDark ? AppColors.rose400 : const Color(0xFFBE123C),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
           ),
         ],
       ),

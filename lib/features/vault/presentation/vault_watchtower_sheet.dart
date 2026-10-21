@@ -159,6 +159,7 @@ class _VaultWatchtowerSheetState extends ConsumerState<VaultWatchtowerSheet> {
                       child: CircularProgressIndicator(
                         value: report.healthScore / 100.0,
                         strokeWidth: 7,
+                        strokeCap: StrokeCap.round,
                         backgroundColor: isDark ? Colors.white12 : Colors.black12,
                         valueColor: AlwaysStoppedAnimation<Color>(scoreColor),
                       ),
@@ -386,33 +387,33 @@ class _VaultWatchtowerSheetState extends ConsumerState<VaultWatchtowerSheet> {
                                     ),
                                   ),
 
-                                  // Fix Action Button
-                                  Container(
-                                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-                                    decoration: BoxDecoration(
-                                      color: AppColors.primaryBlue.withAlpha(isDark ? 40 : 25),
-                                      borderRadius: BorderRadius.circular(10),
-                                    ),
-                                    child: const Row(
-                                      mainAxisSize: MainAxisSize.min,
-                                      children: [
-                                        Text(
-                                          'Fix',
-                                          style: TextStyle(
-                                            fontSize: 12,
-                                            fontWeight: FontWeight.w700,
+                                    // Review Action Button
+                                    Container(
+                                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                                      decoration: BoxDecoration(
+                                        color: AppColors.primaryBlue.withAlpha(isDark ? 40 : 25),
+                                        borderRadius: BorderRadius.circular(10),
+                                      ),
+                                      child: const Row(
+                                        mainAxisSize: MainAxisSize.min,
+                                        children: [
+                                          Text(
+                                            'Review',
+                                            style: TextStyle(
+                                              fontSize: 12,
+                                              fontWeight: FontWeight.w700,
+                                              color: AppColors.primaryBlue,
+                                            ),
+                                          ),
+                                          SizedBox(width: 2),
+                                          Icon(
+                                            Icons.chevron_right_rounded,
+                                            size: 16,
                                             color: AppColors.primaryBlue,
                                           ),
-                                        ),
-                                        SizedBox(width: 2),
-                                        Icon(
-                                          Icons.chevron_right_rounded,
-                                          size: 16,
-                                          color: AppColors.primaryBlue,
-                                        ),
-                                      ],
+                                        ],
+                                      ),
                                     ),
-                                  ),
                                 ],
                               ),
                             ),
@@ -449,7 +450,7 @@ class _VaultWatchtowerSheetState extends ConsumerState<VaultWatchtowerSheet> {
         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
         decoration: BoxDecoration(
           color: isSelected ? activeColor : cardBg,
-          borderRadius: BorderRadius.circular(18),
+          borderRadius: BorderRadius.circular(12),
           border: Border.all(
             color: isSelected ? activeColor : borderCol,
             width: 1,
