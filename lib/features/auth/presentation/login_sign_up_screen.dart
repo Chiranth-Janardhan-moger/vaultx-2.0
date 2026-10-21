@@ -409,7 +409,7 @@ class _LoginSignUpScreenState extends ConsumerState<LoginSignUpScreen> {
                               foregroundColor: Colors.white,
                               shape: const StadiumBorder(),
                               padding: const EdgeInsets.symmetric(vertical: 16),
-                              elevation: 2,
+                              elevation: 0,
                             ),
                             icon: const Icon(Icons.fingerprint_rounded, size: 24),
                             label: const Text(

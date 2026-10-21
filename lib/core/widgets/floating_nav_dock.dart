@@ -116,25 +116,30 @@ class _FloatingNavDockState extends State<FloatingNavDock>
       child: SafeArea(
         child: Padding(
           padding: const EdgeInsets.only(bottom: 14, left: 20, right: 20),
-          child: ClipRRect(
-            borderRadius: BorderRadius.circular(40),
-            child: BackdropFilter(
-              filter: ImageFilter.blur(sigmaX: 20, sigmaY: 20),
-              child: Container(
-                height: 68,
-                decoration: BoxDecoration(
-                  color: bgColor,
-                  borderRadius: BorderRadius.circular(40),
-                  border: Border.all(color: borderColor, width: 1.2),
-                  boxShadow: [
-                    BoxShadow(
-                      color: Colors.black.withAlpha(isDark ? 90 : 28),
-                      blurRadius: 28,
-                      offset: const Offset(0, 12),
-                    ),
-                  ],
+          child: Container(
+            height: 68,
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(40),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withAlpha(isDark ? 90 : 28),
+                  blurRadius: 28,
+                  offset: const Offset(0, 12),
                 ),
-                child: LayoutBuilder(builder: (context, constraints) {
+              ],
+            ),
+            child: ClipRRect(
+              borderRadius: BorderRadius.circular(40),
+              child: BackdropFilter(
+                filter: ImageFilter.blur(sigmaX: 20, sigmaY: 20),
+                child: Container(
+                  height: 68,
+                  decoration: BoxDecoration(
+                    color: bgColor,
+                    borderRadius: BorderRadius.circular(40),
+                    border: Border.all(color: borderColor, width: 1.2),
+                  ),
+                  child: LayoutBuilder(builder: (context, constraints) {
                   final totalWidth = constraints.maxWidth;
                   final tabWidth = totalWidth / _kTabs.length;
 
@@ -184,7 +189,8 @@ class _FloatingNavDockState extends State<FloatingNavDock>
           ),
         ),
       ),
-    );
+    ),
+  );
   }
 }
 

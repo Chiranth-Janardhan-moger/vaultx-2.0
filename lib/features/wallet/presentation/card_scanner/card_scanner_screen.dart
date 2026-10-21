@@ -545,25 +545,31 @@ class _CardScannerScreenState extends State<CardScannerScreen> with SingleTicker
                     // Shutter / Capture Button
                     GestureDetector(
                       onTap: _isProcessing ? null : _captureAndAnalyze,
-                      child: Container(
-                        width: 72,
-                        height: 72,
-                        decoration: BoxDecoration(
-                          shape: BoxShape.circle,
-                          border: Border.all(color: Colors.white, width: 4),
-                          color: AppColors.primaryBlue.withAlpha(220),
-                          boxShadow: [
-                            BoxShadow(
-                              color: AppColors.primaryBlue.withAlpha(120),
-                              blurRadius: 16,
-                              spreadRadius: 2,
-                            ),
-                          ],
-                        ),
-                        child: const Icon(
-                          Icons.camera_alt_rounded,
-                          color: Colors.white,
-                          size: 32,
+                      child: AnimatedOpacity(
+                        duration: const Duration(milliseconds: 200),
+                        opacity: _isProcessing ? 0.5 : 1.0,
+                        child: Container(
+                          width: 72,
+                          height: 72,
+                          decoration: BoxDecoration(
+                            shape: BoxShape.circle,
+                            border: Border.all(color: Colors.white, width: 4),
+                            color: AppColors.primaryBlue.withAlpha(_isProcessing ? 140 : 220),
+                            boxShadow: _isProcessing
+                                ? null
+                                : [
+                                    BoxShadow(
+                                      color: AppColors.primaryBlue.withAlpha(120),
+                                      blurRadius: 16,
+                                      spreadRadius: 2,
+                                    ),
+                                  ],
+                          ),
+                          child: const Icon(
+                            Icons.camera_alt_rounded,
+                            color: Colors.white,
+                            size: 32,
+                          ),
                         ),
                       ),
                     ),

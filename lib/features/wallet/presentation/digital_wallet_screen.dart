@@ -288,10 +288,10 @@ class _CardDetailsSheet extends StatelessWidget {
     Clipboard.setData(ClipboardData(text: text));
     HapticFeedback.lightImpact();
     ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
+      SnackBar(
         backgroundColor: AppColors.emerald500,
-        content: Text(' copied to clipboard'),
-        duration: Duration(seconds: 2),
+        content: Text('$label copied to clipboard'),
+        duration: const Duration(seconds: 2),
       ),
     );
   }
