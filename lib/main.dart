@@ -24,6 +24,13 @@ class VaultXApp extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final themeMode = ref.watch(themeModeProvider);
+    final isDark = themeMode == ThemeMode.dark ||
+        (themeMode == ThemeMode.system &&
+            WidgetsBinding.instance.platformDispatcher.platformBrightness == Brightness.dark);
+    SystemChrome.setSystemUIOverlayStyle(
+      (isDark ? SystemUiOverlayStyle.light : SystemUiOverlayStyle.dark)
+          .copyWith(statusBarColor: Colors.transparent),
+    );
 
     return MaterialApp(
       title: 'VaultX',
@@ -33,20 +40,6 @@ class VaultXApp extends ConsumerWidget {
       darkTheme: AppTheme.darkTheme,
       themeMode: themeMode,
       themeAnimationDuration: Duration.zero,
-      builder: (context, child) {
-        final isDark = Theme.of(context).brightness == Brightness.dark;
-        return AnnotatedRegion<SystemUiOverlayStyle>(
-          value: SystemUiOverlayStyle(
-            statusBarColor: Colors.transparent,
-            statusBarIconBrightness: isDark ? Brightness.light : Brightness.dark,
-            statusBarBrightness: isDark ? Brightness.dark : Brightness.light,
-            systemNavigationBarColor: isDark ? AppColors.darkBackground : AppColors.lightBackground,
-            systemNavigationBarIconBrightness: isDark ? Brightness.light : Brightness.dark,
-            systemNavigationBarDividerColor: Colors.transparent,
-          ),
-          child: child ?? const SizedBox.shrink(),
-        );
-      },
       home: const AppLifecycleLockHandler(child: AuthGate()),
     );
   }
