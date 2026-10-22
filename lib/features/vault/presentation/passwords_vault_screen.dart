@@ -768,24 +768,6 @@ class _CredentialInspectionSheetState extends ConsumerState<_CredentialInspectio
     return '${dt.day} ${months[dt.month - 1]} ${dt.year}, $hour:$minute $period';
   }
 
-  String _formatRelativeDate(DateTime dt) {
-    final now = DateTime.now();
-    final today = DateTime(now.year, now.month, now.day);
-    final yesterday = today.subtract(const Duration(days: 1));
-    final date = DateTime(dt.year, dt.month, dt.day);
-
-    final hour = dt.hour % 12 == 0 ? 12 : dt.hour % 12;
-    final minute = dt.minute.toString().padLeft(2, '0');
-    final period = dt.hour >= 12 ? 'PM' : 'AM';
-    final time = '$hour:$minute $period';
-
-    if (date == today) return 'Today, $time';
-    if (date == yesterday) return 'Yesterday, $time';
-
-    const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-    return '${dt.day} ${months[dt.month - 1]}, $time';
-  }
-
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
@@ -880,24 +862,13 @@ class _CredentialInspectionSheetState extends ConsumerState<_CredentialInspectio
                       ),
                     ),
                     const SizedBox(height: 2),
-                    Row(
-                      children: [
-                        Text(
-                          currentEntry.category,
-                          style: const TextStyle(
-                            fontSize: 12,
-                            fontWeight: FontWeight.w600,
-                            color: AppColors.primaryBlue,
-                          ),
-                        ),
-                        Text(
-                          ' • ${_formatRelativeDate(currentEntry.updatedAt)}',
-                          style: TextStyle(
-                            fontSize: 11.5,
-                            color: mutedCol,
-                          ),
-                        ),
-                      ],
+                    Text(
+                      currentEntry.category,
+                      style: const TextStyle(
+                        fontSize: 12,
+                        fontWeight: FontWeight.w600,
+                        color: AppColors.primaryBlue,
+                      ),
                     ),
                   ],
                 ),
@@ -914,18 +885,6 @@ class _CredentialInspectionSheetState extends ConsumerState<_CredentialInspectio
                 onPressed: () {
                   HapticFeedback.selectionClick();
                   ref.read(vaultPasswordsProvider.notifier).toggleFavorite(currentEntry.id);
-                },
-              ),
-              IconButton(
-                icon: const Icon(Icons.info_outline_rounded, size: 22),
-                tooltip: 'Credential Info',
-                onPressed: () {
-                  Navigator.of(context).pop();
-                  Navigator.of(context).push(
-                    MaterialPageRoute<void>(
-                      builder: (_) => EditPasswordScreen(entry: currentEntry),
-                    ),
-                  );
                 },
               ),
             ],
@@ -1164,10 +1123,66 @@ class _CredentialInspectionSheetState extends ConsumerState<_CredentialInspectio
                         // Timestamps Row
                         Padding(
                           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                          child: Row(
-                            children: [
-                              Expanded(
-                                child: Column(
+                          child: currentEntry.updatedAt.difference(currentEntry.createdAt).inSeconds.abs() > 1
+                              ? Row(
+                                  children: [
+                                    Expanded(
+                                      child: Column(
+                                        crossAxisAlignment: CrossAxisAlignment.start,
+                                        children: [
+                                          Text(
+                                            'Created',
+                                            style: TextStyle(
+                                              fontSize: 11,
+                                              fontWeight: FontWeight.w500,
+                                              color: mutedCol,
+                                            ),
+                                          ),
+                                          const SizedBox(height: 2),
+                                          Text(
+                                            _formatDateTime(widget.entry.createdAt),
+                                            style: TextStyle(
+                                              fontSize: 12,
+                                              fontWeight: FontWeight.w600,
+                                              color: isDark ? AppColors.darkTextPrimary : AppColors.lightTextPrimary,
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                    Container(
+                                      width: 1,
+                                      height: 26,
+                                      color: borderCol,
+                                      margin: const EdgeInsets.symmetric(horizontal: 10),
+                                    ),
+                                    Expanded(
+                                      child: Column(
+                                        crossAxisAlignment: CrossAxisAlignment.start,
+                                        children: [
+                                          Text(
+                                            'Edited',
+                                            style: TextStyle(
+                                              fontSize: 11,
+                                              fontWeight: FontWeight.w500,
+                                              color: mutedCol,
+                                            ),
+                                          ),
+                                          const SizedBox(height: 2),
+                                          Text(
+                                            _formatDateTime(widget.entry.updatedAt),
+                                            style: TextStyle(
+                                              fontSize: 12,
+                                              fontWeight: FontWeight.w600,
+                                              color: isDark ? AppColors.darkTextPrimary : AppColors.lightTextPrimary,
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                  ],
+                                )
+                              : Column(
                                   crossAxisAlignment: CrossAxisAlignment.start,
                                   children: [
                                     Text(
@@ -1189,39 +1204,6 @@ class _CredentialInspectionSheetState extends ConsumerState<_CredentialInspectio
                                     ),
                                   ],
                                 ),
-                              ),
-                              Container(
-                                width: 1,
-                                height: 26,
-                                color: borderCol,
-                                margin: const EdgeInsets.symmetric(horizontal: 10),
-                              ),
-                              Expanded(
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    Text(
-                                      'Edited',
-                                      style: TextStyle(
-                                        fontSize: 11,
-                                        fontWeight: FontWeight.w500,
-                                        color: mutedCol,
-                                      ),
-                                    ),
-                                    const SizedBox(height: 2),
-                                    Text(
-                                      _formatDateTime(widget.entry.updatedAt),
-                                      style: TextStyle(
-                                        fontSize: 12,
-                                        fontWeight: FontWeight.w600,
-                                        color: isDark ? AppColors.darkTextPrimary : AppColors.lightTextPrimary,
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              ),
-                            ],
-                          ),
                         ),
                       ],
                     ),
@@ -1229,110 +1211,123 @@ class _CredentialInspectionSheetState extends ConsumerState<_CredentialInspectio
 
                   const SizedBox(height: 20),
 
-                  // Edit Credential Primary Button
-                  FilledButton.icon(
-                    style: FilledButton.styleFrom(
-                      backgroundColor: AppColors.primaryBlue,
-                      foregroundColor: Colors.white,
-                      minimumSize: const Size.fromHeight(48),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(14),
-                      ),
-                    ),
-                    icon: const Icon(Icons.edit_rounded, size: 18),
-                    label: const Text(
-                      'Edit Credential',
-                      style: TextStyle(fontSize: 14, fontWeight: FontWeight.w700),
-                    ),
-                    onPressed: () {
-                      Navigator.of(context).pop();
-                      Navigator.of(context).push(
-                        MaterialPageRoute<void>(
-                          builder: (_) => EditPasswordScreen(entry: currentEntry),
-                        ),
-                      );
-                    },
-                  ),
-                  const SizedBox(height: 10),
-
-                  // Delete Credential Button
-                  Material(
-                    color: isDark
-                        ? AppColors.rose950.withAlpha(70)
-                        : AppColors.rose500.withAlpha(20),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(14),
-                      side: BorderSide(
-                        color: AppColors.rose500.withAlpha(isDark ? 80 : 140),
-                      ),
-                    ),
-                    clipBehavior: Clip.antiAlias,
-                    child: InkWell(
-                      onTap: () {
-                        HapticFeedback.mediumImpact();
-                        showDialog<void>(
-                          context: context,
-                          builder: (ctx) => AlertDialog(
+                  // Actions: 2 Columns in a Single Row (Delete & Edit)
+                  Row(
+                    children: [
+                      // Delete Action Column
+                      Expanded(
+                        child: SizedBox(
+                          height: 48,
+                          child: Material(
+                            color: isDark
+                                ? AppColors.rose950.withAlpha(70)
+                                : AppColors.rose500.withAlpha(20),
                             shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(20),
-                            ),
-                            title: const Text(
-                              'Delete Password?',
-                              style: TextStyle(fontWeight: FontWeight.w700),
-                            ),
-                            content: Text(
-                              'This will permanently remove "${widget.entry.title}" from your vault.',
-                            ),
-                            actions: [
-                              TextButton(
-                                onPressed: () => Navigator.of(ctx).pop(),
-                                child: const Text('Cancel'),
+                              borderRadius: BorderRadius.circular(14),
+                              side: BorderSide(
+                                color: AppColors.rose500.withAlpha(isDark ? 80 : 140),
                               ),
-                              FilledButton(
-                                style: FilledButton.styleFrom(
-                                  backgroundColor: AppColors.rose500,
-                                  foregroundColor: Colors.white,
-                                  shape: RoundedRectangleBorder(
-                                    borderRadius: BorderRadius.circular(12),
+                            ),
+                            clipBehavior: Clip.antiAlias,
+                            child: InkWell(
+                              onTap: () {
+                                HapticFeedback.mediumImpact();
+                                showDialog<void>(
+                                  context: context,
+                                  builder: (ctx) => AlertDialog(
+                                    shape: RoundedRectangleBorder(
+                                      borderRadius: BorderRadius.circular(20),
+                                    ),
+                                    title: const Text(
+                                      'Delete Password?',
+                                      style: TextStyle(fontWeight: FontWeight.w700),
+                                    ),
+                                    content: Text(
+                                      'This will permanently remove "${widget.entry.title}" from your vault.',
+                                    ),
+                                    actions: [
+                                      TextButton(
+                                        onPressed: () => Navigator.of(ctx).pop(),
+                                        child: const Text('Cancel'),
+                                      ),
+                                      FilledButton(
+                                        style: FilledButton.styleFrom(
+                                          backgroundColor: AppColors.rose500,
+                                          foregroundColor: Colors.white,
+                                          shape: RoundedRectangleBorder(
+                                            borderRadius: BorderRadius.circular(12),
+                                          ),
+                                        ),
+                                        onPressed: () {
+                                          ref
+                                              .read(vaultPasswordsProvider.notifier)
+                                              .deletePassword(widget.entry.id);
+                                          Navigator.of(ctx).pop();
+                                          Navigator.of(context).pop();
+                                          HapticFeedback.heavyImpact();
+                                        },
+                                        child: const Text('Delete'),
+                                      ),
+                                    ],
                                   ),
+                                );
+                              },
+                              child: Center(
+                                child: Row(
+                                  mainAxisAlignment: MainAxisAlignment.center,
+                                  children: [
+                                    Icon(
+                                      Icons.delete_outline_rounded,
+                                      size: 18,
+                                      color: isDark ? AppColors.rose400 : const Color(0xFFBE123C),
+                                    ),
+                                    const SizedBox(width: 6),
+                                    Text(
+                                      'Delete',
+                                      style: TextStyle(
+                                        fontSize: 14,
+                                        fontWeight: FontWeight.w700,
+                                        color: isDark ? AppColors.rose400 : const Color(0xFFBE123C),
+                                      ),
+                                    ),
+                                  ],
                                 ),
-                                onPressed: () {
-                                  ref
-                                      .read(vaultPasswordsProvider.notifier)
-                                      .deletePassword(widget.entry.id);
-                                  Navigator.of(ctx).pop();
-                                  Navigator.of(context).pop();
-                                  HapticFeedback.heavyImpact();
-                                },
-                                child: const Text('Delete'),
                               ),
-                            ],
+                            ),
                           ),
-                        );
-                      },
-                      child: Padding(
-                        padding: const EdgeInsets.symmetric(vertical: 13),
-                        child: Row(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            Icon(
-                              Icons.delete_outline_rounded,
-                              size: 18,
-                              color: isDark ? AppColors.rose400 : const Color(0xFFBE123C),
-                            ),
-                            const SizedBox(width: 8),
-                            Text(
-                              'Delete Password',
-                              style: TextStyle(
-                                fontSize: 14,
-                                fontWeight: FontWeight.w700,
-                                color: isDark ? AppColors.rose400 : const Color(0xFFBE123C),
-                              ),
-                            ),
-                          ],
                         ),
                       ),
-                    ),
+                      const SizedBox(width: 12),
+
+                      // Edit Action Column
+                      Expanded(
+                        child: SizedBox(
+                          height: 48,
+                          child: FilledButton.icon(
+                            style: FilledButton.styleFrom(
+                              backgroundColor: AppColors.primaryBlue,
+                              foregroundColor: Colors.white,
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(14),
+                              ),
+                            ),
+                            icon: const Icon(Icons.edit_rounded, size: 18),
+                            label: const Text(
+                              'Edit',
+                              style: TextStyle(fontSize: 14, fontWeight: FontWeight.w700),
+                            ),
+                            onPressed: () {
+                              Navigator.of(context).pop();
+                              Navigator.of(context).push(
+                                MaterialPageRoute<void>(
+                                  builder: (_) => EditPasswordScreen(entry: currentEntry),
+                                ),
+                              );
+                            },
+                          ),
+                        ),
+                      ),
+                    ],
                   ),
                 ],
               ),

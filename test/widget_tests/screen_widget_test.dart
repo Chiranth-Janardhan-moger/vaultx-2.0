@@ -287,7 +287,7 @@ void main() {
       expect(find.textContaining('GitHub'), findsWidgets);
     });
 
-    testWidgets('tapping password card opens detail dialog with info button and created/edited timestamps', (tester) async {
+    testWidgets('tapping password card opens detail dialog with edit and delete actions and timestamps', (tester) async {
       final entry = _makeEntry(id: 'e1', title: 'Google');
       await tester.pumpWidget(buildVault(entries: [entry]));
       await tester.pumpAndSettle();
@@ -295,9 +295,24 @@ void main() {
       await tester.tap(find.textContaining('Google').first);
       await tester.pumpAndSettle();
 
-      expect(find.byIcon(Icons.info_outline_rounded), findsOneWidget);
+      expect(find.text('Edit'), findsOneWidget);
+      expect(find.text('Delete'), findsOneWidget);
       expect(find.text('Created'), findsOneWidget);
       expect(find.text('Edited'), findsOneWidget);
+    });
+
+    testWidgets('tapping password card for unedited credential shows Created and hides Edited timestamp', (tester) async {
+      final now = DateTime(2025, 3, 10, 14, 30);
+      final entry = _makeEntry(id: 'e2', title: 'Unedited Service')
+          .copyWith(createdAt: now, updatedAt: now);
+      await tester.pumpWidget(buildVault(entries: [entry]));
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.textContaining('Unedited Service').first);
+      await tester.pumpAndSettle();
+
+      expect(find.text('Created'), findsOneWidget);
+      expect(find.text('Edited'), findsNothing);
     });
   });
 
