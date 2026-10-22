@@ -65,17 +65,6 @@ class _VaultWatchtowerSheetState extends ConsumerState<VaultWatchtowerSheet> {
       }
     }
 
-    if (_selectedFilterIndex == 0 || _selectedFilterIndex == 3) {
-      for (final entry in report.missing2faEntries) {
-        issueItems.add(_AuditIssueItem(
-          entry: entry,
-          issueType: _IssueType.missing2fa,
-          description: 'No TOTP 2FA authenticator key',
-          badgeColor: AppColors.primaryBlue,
-        ));
-      }
-    }
-
     return Container(
       height: MediaQuery.of(context).size.height * 0.88,
       padding: const EdgeInsets.fromLTRB(20, 14, 20, 20),
@@ -244,16 +233,6 @@ class _VaultWatchtowerSheetState extends ConsumerState<VaultWatchtowerSheet> {
                   cardBg: cardBg,
                   borderCol: borderCol,
                   highlightColor: report.weakEntries.isNotEmpty ? AppColors.amber500 : null,
-                ),
-                const SizedBox(width: 8),
-                _buildFilterChip(
-                  index: 3,
-                  label: 'Missing 2FA (${report.missing2faEntries.length})',
-                  icon: Icons.lock_clock_rounded,
-                  isDark: isDark,
-                  cardBg: cardBg,
-                  borderCol: borderCol,
-                  highlightColor: report.missing2faEntries.isNotEmpty ? AppColors.primaryBlue : null,
                 ),
               ],
             ),
@@ -484,7 +463,7 @@ class _VaultWatchtowerSheetState extends ConsumerState<VaultWatchtowerSheet> {
   }
 }
 
-enum _IssueType { reused, weak, missing2fa }
+enum _IssueType { reused, weak }
 
 class _AuditIssueItem {
   final VaultPasswordEntry entry;

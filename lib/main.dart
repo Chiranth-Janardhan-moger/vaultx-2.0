@@ -15,6 +15,7 @@ import 'features/settings/presentation/providers/auto_lock_provider.dart';
 
 void main() {
   WidgetsFlutterBinding.ensureInitialized();
+  SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
   runApp(const ProviderScope(child: VaultXApp()));
 }
 

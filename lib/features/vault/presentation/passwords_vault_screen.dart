@@ -4,7 +4,6 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:vaultx/core/services/clipboard_security_service.dart';
 import 'package:vaultx/core/theme/app_theme.dart';
 import 'package:vaultx/core/widgets/expressive/expressive.dart';
-import 'package:vaultx/core/widgets/totp_code_widget.dart';
 import 'package:vaultx/features/vault/domain/vault_password_entry.dart';
 import 'package:vaultx/features/vault/domain/vault_watchtower_engine.dart';
 import 'package:vaultx/features/vault/presentation/providers/vault_passwords_provider.dart';
@@ -579,24 +578,6 @@ class _PasswordsVaultScreenState extends ConsumerState<PasswordsVaultScreen> {
                                         const SizedBox(height: 5),
                                         Row(
                                           children: [
-                                            if (entry.hasTotp) ...[
-                                              Container(
-                                                padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1.5),
-                                                decoration: BoxDecoration(
-                                                  color: AppColors.primaryBlue.withAlpha(isDark ? 45 : 30),
-                                                  borderRadius: BorderRadius.circular(5),
-                                                ),
-                                                child: const Text(
-                                                  '2FA',
-                                                  style: TextStyle(
-                                                    fontSize: 9.5,
-                                                    fontWeight: FontWeight.w800,
-                                                    color: AppColors.primaryBlue,
-                                                  ),
-                                                ),
-                                              ),
-                                              const SizedBox(width: 6),
-                                            ],
                                             Flexible(
                                               child: Text(
                                                 entry.category,
@@ -1032,15 +1013,6 @@ class _CredentialInspectionSheetState extends ConsumerState<_CredentialInspectio
                       ],
                     ),
                   ),
-
-                  // Real-time 2FA TOTP Authenticator Card
-                  if (widget.entry.hasTotp) ...[
-                    const SizedBox(height: 14),
-                    TotpCodeWidget(
-                      secret: widget.entry.totpSecret,
-                      accountLabel: widget.entry.username.isNotEmpty ? widget.entry.username : widget.entry.title,
-                    ),
-                  ],
 
                   // Group 2: Details & Notes (Inset Grouped Card)
                   const SizedBox(height: 14),

@@ -106,21 +106,12 @@ class VaultWatchtowerEngine {
       }
     }
 
-    // 3. Identify missing 2FA
-    final List<VaultPasswordEntry> missing2faEntries = [];
-    for (final entry in credentials) {
-      if (!entry.hasTotp) {
-        missing2faEntries.add(entry);
-      }
-    }
-
-    // 4. Calculate Health Score (0 - 100)
+    // 3. Calculate Health Score (0 - 100 based on password reuse and strength)
     final total = credentials.length;
-    final double reusedPenalty = (reusedEntries.length / total) * 40.0;
-    final double weakPenalty = (weakEntries.length / total) * 40.0;
-    final double missing2faPenalty = (missing2faEntries.length / total) * 20.0;
+    final double reusedPenalty = (reusedEntries.length / total) * 50.0;
+    final double weakPenalty = (weakEntries.length / total) * 50.0;
 
-    final int rawScore = (100.0 - reusedPenalty - weakPenalty - missing2faPenalty)
+    final int rawScore = (100.0 - reusedPenalty - weakPenalty)
         .round()
         .clamp(0, 100);
 
@@ -138,7 +129,7 @@ class VaultWatchtowerEngine {
       passwordReuseCount: passwordReuseCount,
       weakEntries: weakEntries,
       weakEntropyMap: weakEntropyMap,
-      missing2faEntries: missing2faEntries,
+      missing2faEntries: const [],
     );
   }
 }

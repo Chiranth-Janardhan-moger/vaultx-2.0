@@ -1,5 +1,6 @@
 package com.vaultx.vaultx
 
+import android.os.Build
 import android.os.Bundle
 import android.view.WindowManager
 import io.flutter.embedding.android.FlutterFragmentActivity
@@ -11,8 +12,11 @@ class MainActivity : FlutterFragmentActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        // Default to secure: block screenshots and hide preview in recent apps switcher
-        window.addFlags(WindowManager.LayoutParams.FLAG_SECURE)
+        // Enable edge-to-edge window decor so the native status bar area is transparent
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+            window.setDecorFitsSystemWindows(false)
+        }
+        window.statusBarColor = android.graphics.Color.TRANSPARENT
     }
 
     override fun configureFlutterEngine(flutterEngine: FlutterEngine) {

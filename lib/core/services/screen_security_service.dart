@@ -14,14 +14,14 @@ class ScreenSecurityNotifier extends StateNotifier<bool> {
 
   ScreenSecurityNotifier({AppSettingsStorage? settingsStorage})
       : _settingsStorage = settingsStorage ?? AppSettingsStorage(),
-        super(true) {
+        super(false) {
     _loadPreference();
   }
 
   Future<void> _loadPreference() async {
     try {
       final settings = await _settingsStorage.readSettings();
-      final enabled = settings[_storageKey] as bool? ?? true;
+      final enabled = settings[_storageKey] as bool? ?? false;
       state = enabled;
       await _applyNative(enabled);
     } catch (e) {

@@ -63,7 +63,7 @@ void main() {
       expect(report.passwordReuseCount['IdenticalPassword123!'], 2);
     });
 
-    test('audit detects missing TOTP 2FA and weak passwords', () {
+    test('audit detects weak passwords without 2FA penalty', () {
       final now = DateTime.now();
       final entries = [
         VaultPasswordEntry(
@@ -89,8 +89,7 @@ void main() {
       final report = VaultWatchtowerEngine.audit(entries);
       expect(report.weakEntries.length, 1);
       expect(report.weakEntries.first.title, 'WeakAccount');
-      expect(report.missing2faEntries.length, 1);
-      expect(report.missing2faEntries.first.title, 'WeakAccount');
+      expect(report.missing2faEntries.isEmpty, isTrue);
     });
 
     test('audit ignores secure notes and deleted entries from credential penalties', () {

@@ -2,7 +2,6 @@ import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:vaultx/core/crypto/totp_service.dart';
 import 'package:vaultx/core/theme/app_theme.dart';
 import 'package:vaultx/core/widgets/expressive/expressive.dart';
 import 'package:vaultx/features/vault/domain/vault_password_entry.dart';
@@ -23,7 +22,6 @@ class _AddPasswordScreenState extends ConsumerState<AddPasswordScreen> {
   final _titleController = TextEditingController();
   final _usernameOrEmailController = TextEditingController();
   final _passwordController = TextEditingController();
-  final _totpController = TextEditingController();
   final _urlController = TextEditingController();
   final _notesController = TextEditingController();
 
@@ -95,7 +93,6 @@ class _AddPasswordScreenState extends ConsumerState<AddPasswordScreen> {
     _titleController.dispose();
     _usernameOrEmailController.dispose();
     _passwordController.dispose();
-    _totpController.dispose();
     _urlController.dispose();
     _notesController.dispose();
     super.dispose();
@@ -121,7 +118,6 @@ class _AddPasswordScreenState extends ConsumerState<AddPasswordScreen> {
     final title = _titleController.text.trim();
     final usernameOrEmail = _usernameOrEmailController.text.trim();
     final password = _passwordController.text.trim();
-    final totpRaw = _totpController.text.trim();
 
     if (_isSecureNote) {
       if (title.isEmpty) {
@@ -147,14 +143,6 @@ class _AddPasswordScreenState extends ConsumerState<AddPasswordScreen> {
       }
     }
 
-    String extractedTotp = totpRaw;
-    if (totpRaw.startsWith('otpauth://')) {
-      final parsed = TotpService.parseUri(totpRaw);
-      if (parsed != null) {
-        extractedTotp = parsed.secret;
-      }
-    }
-
     final newEntry = VaultPasswordEntry(
       id: 'vault-${DateTime.now().microsecondsSinceEpoch}',
       title: title,
@@ -164,7 +152,7 @@ class _AddPasswordScreenState extends ConsumerState<AddPasswordScreen> {
       category: _isSecureNote ? 'Notes' : _selectedCategory,
       websiteUrl: _isSecureNote ? '' : _urlController.text.trim(),
       notes: _notesController.text.trim(),
-      totpSecret: extractedTotp,
+      totpSecret: '',
       createdAt: DateTime.now(),
       updatedAt: DateTime.now(),
       isFavorite: _isFavorite,
@@ -413,28 +401,6 @@ class _AddPasswordScreenState extends ConsumerState<AddPasswordScreen> {
                 ExpressiveSwipeSlider(
                   label: 'Swipe to Generate Password',
                   onTrigger: _generateRandomPassword,
-                ),
-                const SizedBox(height: 16),
-
-                // 2FA TOTP Key input
-                Container(
-                  decoration: BoxDecoration(
-                    color: cardBg,
-                    borderRadius: BorderRadius.circular(20),
-                    border: Border.all(color: borderCol, width: 1),
-                  ),
-                  child: TextField(
-                    controller: _totpController,
-                    decoration: const InputDecoration(
-                      labelText: '2FA Authenticator Key (Optional)',
-                      hintText: 'Base32 secret (e.g. JBSWY3D...) or otpauth:// URI',
-                      prefixIcon: Icon(Icons.security_rounded, size: 20, color: AppColors.primaryBlue),
-                      filled: true,
-                      fillColor: Colors.transparent,
-                      border: InputBorder.none,
-                      contentPadding: EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-                    ),
-                  ),
                 ),
                 const SizedBox(height: 16),
 

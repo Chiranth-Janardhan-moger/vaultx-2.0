@@ -25,7 +25,6 @@ class _EditPasswordScreenState extends ConsumerState<EditPasswordScreen> {
   late TextEditingController _titleController;
   late TextEditingController _usernameController;
   late TextEditingController _passwordController;
-  late TextEditingController _totpController;
   late TextEditingController _websiteController;
   late TextEditingController _notesController;
 
@@ -35,7 +34,6 @@ class _EditPasswordScreenState extends ConsumerState<EditPasswordScreen> {
     _titleController = TextEditingController(text: widget.entry.title);
     _usernameController = TextEditingController(text: widget.entry.username);
     _passwordController = TextEditingController(text: widget.entry.password);
-    _totpController = TextEditingController(text: widget.entry.totpSecret);
     _websiteController = TextEditingController(text: widget.entry.websiteUrl);
     _notesController = TextEditingController(text: widget.entry.notes);
   }
@@ -45,7 +43,6 @@ class _EditPasswordScreenState extends ConsumerState<EditPasswordScreen> {
     _titleController.dispose();
     _usernameController.dispose();
     _passwordController.dispose();
-    _totpController.dispose();
     _websiteController.dispose();
     _notesController.dispose();
     super.dispose();
@@ -64,7 +61,7 @@ class _EditPasswordScreenState extends ConsumerState<EditPasswordScreen> {
       title: newTitle,
       username: _usernameController.text.trim(),
       password: _passwordController.text.trim(),
-      totpSecret: _totpController.text.trim(),
+      totpSecret: widget.entry.totpSecret,
       websiteUrl: _websiteController.text.trim(),
       notes: _notesController.text.trim(),
       updatedAt: DateTime.now(),
@@ -315,33 +312,6 @@ class _EditPasswordScreenState extends ConsumerState<EditPasswordScreen> {
                               ),
                               tooltip: _revealPassword ? 'Mask password' : 'Show password',
                               onPressed: () => setState(() => _revealPassword = !_revealPassword),
-                            ),
-                          ],
-                        ),
-                      ),
-                      Divider(height: 1, color: borderCol),
-
-                      // 2FA Key Row
-                      Padding(
-                        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                        child: Row(
-                          children: [
-                            const SizedBox(
-                              width: 85,
-                              child: Text(
-                                '2FA Key',
-                                style: TextStyle(fontSize: 14, fontWeight: FontWeight.w500),
-                              ),
-                            ),
-                            Expanded(
-                              child: TextField(
-                                controller: _totpController,
-                                decoration: const InputDecoration(
-                                  hintText: 'Base32 secret key',
-                                  border: InputBorder.none,
-                                  isDense: true,
-                                ),
-                              ),
                             ),
                           ],
                         ),
