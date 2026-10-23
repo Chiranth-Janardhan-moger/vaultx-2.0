@@ -113,11 +113,26 @@ jobs:
       - name: Build Windows Executable (debug)
         run: flutter build windows --debug
 
-      - name: Upload Windows Build Artifact
+      - name: Install Inno Setup
+        run: choco install innosetup --no-progress -y
+
+      - name: Build Windows Setup Installer (.exe)
+        run: |
+          New-Item -ItemType Directory -Force -Path build\windows\installer
+          $isccPath = (Get-Command iscc -ErrorAction SilentlyContinue).Source
+          if (-not $isccPath) {
+            $isccPath = "C:\Program Files (x86)\Inno Setup 6\ISCC.exe"
+          }
+          if (-not (Test-Path $isccPath)) {
+            $isccPath = "C:\Program Files\Inno Setup 6\ISCC.exe"
+          }
+          & $isccPath /DBuildMode=Debug /DMyAppVersion=2.0.0 windows/installer/vaultx_setup.iss
+
+      - name: Upload Windows Setup Installer (.exe) Artifact
         uses: actions/upload-artifact@v4
         with:
-          name: vaultx-windows-${{ github.sha }}
-          path: build/windows/x64/runner/Debug/
+          name: vaultx-windows-setup-${{ github.sha }}
+          path: build/windows/installer/VaultX-2.0.0-Setup-x64.exe
           retention-days: 30
 
   build-apple:
@@ -158,6 +173,11 @@ jobs:
         if: matrix.target == 'macos'
         run: flutter build macos --debug
 
+      - name: Package macOS Disk Image (.dmg)
+        if: matrix.target == 'macos'
+        run: |
+          hdiutil create -volname "VaultX 2.0" -srcfolder build/macos/Build/Products/Debug/vaultx.app -ov -format UDZO build/macos/VaultX-2.0.0.dmg
+
       - name: Upload iOS Build Artifact (no-codesign simulator build)
         if: matrix.target == 'ios'
         uses: actions/upload-artifact@v4
@@ -166,11 +186,11 @@ jobs:
           path: build/ios/iphonesimulator/
           retention-days: 30
 
-      - name: Upload macOS Build Artifact (unsigned app)
+      - name: Upload macOS DMG Artifact
         if: matrix.target == 'macos'
         uses: actions/upload-artifact@v4
         with:
-          name: vaultx-macos-${{ github.sha }}
-          path: build/macos/Build/Products/Debug/vaultx.app
+          name: vaultx-macos-dmg-${{ github.sha }}
+          path: build/macos/VaultX-2.0.0.dmg
           retention-days: 30
 
