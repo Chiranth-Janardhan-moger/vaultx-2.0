@@ -20,6 +20,9 @@ Color getCategoryColor(String category) {
     case 'bank':
     case 'finance':
       return const Color(0xFF10B981);
+    case 'pins':
+    case 'pin':
+      return const Color(0xFF10B981);
     case 'social':
       return const Color(0xFF8B5CF6);
     case 'work':
@@ -235,6 +238,7 @@ class VaultPasswordsState {
     'Work',
     'Entertainment',
     'Shopping',
+    'PINs',
     'Others',
   ];
 
@@ -245,6 +249,7 @@ class VaultPasswordsState {
     'Work',
     'Entertainment',
     'Shopping',
+    'PINs',
     'Others',
   ];
 
@@ -286,7 +291,9 @@ class VaultPasswordsState {
           : sel == 'others'
               ? (entryCat == 'others' ||
                   !defaultCategories.any((c) => c.toLowerCase() == entryCat))
-              : (entryCat == sel || (sel == 'banking' && entryCat == 'bank'));
+              : (sel == 'pins' || sel == 'pin')
+                  ? (entry.hasPin || entry.isPinOnly || entryCat == 'pins' || entryCat == 'pin')
+                  : (entryCat == sel || (sel == 'banking' && entryCat == 'bank'));
 
       final query = searchQuery.trim().toLowerCase();
       final matchesSearch = query.isEmpty ||
@@ -313,8 +320,8 @@ class VaultPasswordsState {
         case VaultSortOption.alphabetical:
           return a.title.toLowerCase().compareTo(b.title.toLowerCase());
         case VaultSortOption.strength:
-          final aEntropy = a.isSecureNote ? 999.0 : VaultWatchtowerEngine.calculateEntropy(a.password);
-          final bEntropy = b.isSecureNote ? 999.0 : VaultWatchtowerEngine.calculateEntropy(b.password);
+          final aEntropy = (a.isSecureNote || a.isPinOnly) ? 999.0 : VaultWatchtowerEngine.calculateEntropy(a.password);
+          final bEntropy = (b.isSecureNote || b.isPinOnly) ? 999.0 : VaultWatchtowerEngine.calculateEntropy(b.password);
           return aEntropy.compareTo(bEntropy);
       }
     });

@@ -1,11 +1,14 @@
+import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:vaultx/core/theme/app_theme.dart';
+import 'package:vaultx/core/theme/happy_feedback.dart';
 import 'package:vaultx/features/vault/domain/vault_password_entry.dart';
 import 'package:vaultx/features/vault/domain/vault_watchtower_engine.dart';
 import 'package:vaultx/features/vault/presentation/edit_password_screen.dart';
 import 'package:vaultx/features/vault/presentation/providers/vault_passwords_provider.dart';
+import 'package:vaultx/features/vault/presentation/widgets/concentric_radar_gauge.dart';
 
 /// Modal bottom sheet presenting the offline, zero-knowledge Security Watchtower audit.
 class VaultWatchtowerSheet extends ConsumerStatefulWidget {
@@ -17,6 +20,26 @@ class VaultWatchtowerSheet extends ConsumerStatefulWidget {
 
 class _VaultWatchtowerSheetState extends ConsumerState<VaultWatchtowerSheet> {
   int _selectedFilterIndex = 0; // 0: All, 1: Reused, 2: Weak, 3: Missing 2FA
+
+  void _quickResolveWeakPassword(VaultWatchtowerReport report) {
+    if (report.weakEntries.isEmpty) return;
+    final weakest = report.weakEntries.first;
+
+    const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789!@#\$%^&*()_+-=';
+    final random = math.Random.secure();
+    final newPassword = List.generate(20, (_) => chars[random.nextInt(chars.length)]).join();
+
+    final updated = weakest.copyWith(password: newPassword, updatedAt: DateTime.now());
+    ref.read(vaultPasswordsProvider.notifier).updatePassword(updated);
+
+    HappyFeedback.celebrate();
+    HappyFeedback.show(
+      context,
+      title: 'Password Fortified',
+      message: 'Upgraded "${weakest.title}" with 20-character cryptographic entropy.',
+      icon: Icons.shield_rounded,
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -61,6 +84,17 @@ class _VaultWatchtowerSheetState extends ConsumerState<VaultWatchtowerSheet> {
           issueType: _IssueType.weak,
           description: desc,
           badgeColor: AppColors.amber500,
+        ));
+      }
+    }
+
+    if (_selectedFilterIndex == 0 || _selectedFilterIndex == 3) {
+      for (final entry in report.missing2faEntries) {
+        issueItems.add(_AuditIssueItem(
+          entry: entry,
+          issueType: _IssueType.missing2fa,
+          description: 'Account lacks 2FA TOTP authenticator protection',
+          badgeColor: const Color(0xFF00F59B),
         ));
       }
     }
@@ -128,76 +162,14 @@ class _VaultWatchtowerSheetState extends ConsumerState<VaultWatchtowerSheet> {
           ),
           const SizedBox(height: 16),
 
-          // Health Score Card
-          Container(
-            padding: const EdgeInsets.all(18),
-            decoration: BoxDecoration(
-              color: inputBg,
-              borderRadius: BorderRadius.circular(20),
-              border: Border.all(color: borderCol),
-            ),
-            child: Row(
-              children: [
-                // Circular Gauge
-                Stack(
-                  alignment: Alignment.center,
-                  children: [
-                    SizedBox(
-                      width: 68,
-                      height: 68,
-                      child: CircularProgressIndicator(
-                        value: report.healthScore / 100.0,
-                        strokeWidth: 7,
-                        strokeCap: StrokeCap.round,
-                        backgroundColor: isDark ? Colors.white12 : Colors.black12,
-                        valueColor: AlwaysStoppedAnimation<Color>(scoreColor),
-                      ),
-                    ),
-                    Text(
-                      '${report.healthScore}%',
-                      style: TextStyle(
-                        fontSize: 17,
-                        fontWeight: FontWeight.w800,
-                        color: scoreColor,
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(width: 16),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Row(
-                        children: [
-                          Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                            decoration: BoxDecoration(
-                              color: scoreColor.withAlpha(isDark ? 45 : 30),
-                              borderRadius: BorderRadius.circular(8),
-                            ),
-                            child: Text(
-                              report.healthStatus.toUpperCase(),
-                              style: TextStyle(
-                                fontSize: 11,
-                                fontWeight: FontWeight.w800,
-                                color: scoreColor,
-                                letterSpacing: 0.5,
-                              ),
-                            ),
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 6),
-                      Text(
-                        '${report.totalCredentials} credentials analyzed locally. Zero data leaves your device.',
-                        style: TextStyle(fontSize: 12, color: mutedCol),
-                      ),
-                    ],
-                  ),
-                ),
-              ],
-            ),
+          // High-Performance Concentric Radar Health Gauge
+          ConcentricRadarGauge(
+            report: report,
+            selectedFilterIndex: _selectedFilterIndex,
+            onFilterSelected: (idx) => setState(() => _selectedFilterIndex = idx),
+            onQuickResolveWeak: () => _quickResolveWeakPassword(report),
+            onQuickResolveReused: () => setState(() => _selectedFilterIndex = 1),
+            onQuickResolve2FA: () => setState(() => _selectedFilterIndex = 3),
           ),
           const SizedBox(height: 14),
 
@@ -233,6 +205,16 @@ class _VaultWatchtowerSheetState extends ConsumerState<VaultWatchtowerSheet> {
                   cardBg: cardBg,
                   borderCol: borderCol,
                   highlightColor: report.weakEntries.isNotEmpty ? AppColors.amber500 : null,
+                ),
+                const SizedBox(width: 8),
+                _buildFilterChip(
+                  index: 3,
+                  label: 'Missing 2FA (${report.missing2faEntries.length})',
+                  icon: Icons.security_rounded,
+                  isDark: isDark,
+                  cardBg: cardBg,
+                  borderCol: borderCol,
+                  highlightColor: report.missing2faEntries.isNotEmpty ? const Color(0xFF00F59B) : null,
                 ),
               ],
             ),
@@ -463,7 +445,7 @@ class _VaultWatchtowerSheetState extends ConsumerState<VaultWatchtowerSheet> {
   }
 }
 
-enum _IssueType { reused, weak }
+enum _IssueType { reused, weak, missing2fa }
 
 class _AuditIssueItem {
   final VaultPasswordEntry entry;

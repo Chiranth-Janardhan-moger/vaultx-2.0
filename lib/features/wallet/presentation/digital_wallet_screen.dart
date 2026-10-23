@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:vaultx/core/services/clipboard_security_service.dart';
 import 'package:vaultx/core/theme/app_theme.dart';
+import 'package:vaultx/core/widgets/gliding_category_bar.dart';
 import 'package:vaultx/core/widgets/physical_card_widget.dart';
 import 'package:vaultx/features/wallet/domain/wallet_card_entry.dart';
 import 'package:vaultx/features/wallet/presentation/providers/wallet_cards_provider.dart';
@@ -73,7 +74,6 @@ class _DigitalWalletScreenState extends ConsumerState<DigitalWalletScreen> {
     final walletState = ref.watch(walletCardsProvider);
     final cards = walletState.filteredCards;
 
-    final cardBg = isDark ? AppColors.darkCardSurface : AppColors.lightCardSurface;
     final inputBg = isDark ? AppColors.darkInputSurface : AppColors.lightInputSurface;
     final borderCol = isDark ? AppColors.darkBorder : AppColors.lightBorder;
 
@@ -154,53 +154,28 @@ class _DigitalWalletScreenState extends ConsumerState<DigitalWalletScreen> {
               ),
             ),
 
-            // Network Filters
+            // Network Filters (Apple HIG & OriginOS Gliding Magnetic Bar)
             SliverToBoxAdapter(
-              child: SizedBox(
-                height: 52,
-                child: ListView.separated(
-                  padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
-                  scrollDirection: Axis.horizontal,
-                  itemCount: _networks.length,
-                  separatorBuilder: (_, __) => const SizedBox(width: 8),
-                  itemBuilder: (context, index) {
-                    final network = _networks[index];
-                    final isSelected =
-                        walletState.selectedNetwork.toLowerCase() == network.toLowerCase();
+              child: Padding(
+                padding: const EdgeInsets.only(top: 4, bottom: 8),
+                child: GlidingCategoryBar(
+                  items: _networks.map((network) {
+                    final isAll = network.toLowerCase() == 'all';
+                    final int count = isAll
+                        ? walletState.activeCards.length
+                        : walletState.activeCards
+                            .where((c) => c.network.toLowerCase() == network.toLowerCase())
+                            .length;
 
-                    return Semantics(
-                      button: true,
-                      selected: isSelected,
-                      child: GestureDetector(
-                        onTap: () {
-                          HapticFeedback.selectionClick();
-                          ref.read(walletCardsProvider.notifier).setSelectedNetwork(network);
-                        },
-                        child: AnimatedContainer(
-                          duration: const Duration(milliseconds: 180),
-                          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
-                          decoration: BoxDecoration(
-                            color: isSelected ? AppColors.primaryBlue : cardBg,
-                            borderRadius: BorderRadius.circular(12),
-                            border: Border.all(
-                              color: isSelected ? AppColors.primaryBlue : borderCol,
-                              width: 1,
-                            ),
-                          ),
-                          alignment: Alignment.center,
-                          child: Text(
-                            network,
-                            style: TextStyle(
-                              fontSize: 13,
-                              fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
-                              color: isSelected
-                                  ? Colors.white
-                                  : (isDark ? AppColors.darkTextPrimary : AppColors.lightTextPrimary),
-                            ),
-                          ),
-                        ),
-                      ),
+                    return GlidingCategoryItem(
+                      id: network,
+                      label: network,
+                      count: count,
                     );
+                  }).toList(),
+                  selectedId: walletState.selectedNetwork,
+                  onSelected: (network) {
+                    ref.read(walletCardsProvider.notifier).setSelectedNetwork(network);
                   },
                 ),
               ),

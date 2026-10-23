@@ -89,7 +89,8 @@ void main() {
       final report = VaultWatchtowerEngine.audit(entries);
       expect(report.weakEntries.length, 1);
       expect(report.weakEntries.first.title, 'WeakAccount');
-      expect(report.missing2faEntries.isEmpty, isTrue);
+      expect(report.missing2faEntries.length, 1);
+      expect(report.missing2faEntries.first.title, 'WeakAccount');
     });
 
     test('audit ignores secure notes and deleted entries from credential penalties', () {

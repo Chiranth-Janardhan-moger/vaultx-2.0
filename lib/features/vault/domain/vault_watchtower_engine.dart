@@ -56,9 +56,9 @@ class VaultWatchtowerEngine {
 
   /// Audits a list of vault entries and returns an offline [VaultWatchtowerReport].
   static VaultWatchtowerReport audit(List<VaultPasswordEntry> allEntries) {
-    // Only analyze active credentials (exclude secure notes and deleted entries)
+    // Only analyze active credentials (exclude secure notes, PIN-only entries, and deleted entries)
     final credentials = allEntries
-        .where((e) => !e.isDeleted && !e.isSecureNote)
+        .where((e) => !e.isDeleted && !e.isSecureNote && !e.isPinOnly)
         .toList();
 
     if (credentials.isEmpty) {
@@ -106,7 +106,12 @@ class VaultWatchtowerEngine {
       }
     }
 
-    // 3. Calculate Health Score (0 - 100 based on password reuse and strength)
+    // 3. Identify standard accounts missing 2FA TOTP
+    final List<VaultPasswordEntry> missing2faEntries = credentials
+        .where((e) => !e.isSecureNote && !e.isPinOnly && !e.hasTotp && e.password.isNotEmpty)
+        .toList();
+
+    // 4. Calculate Health Score (0 - 100 based on password reuse and strength)
     final total = credentials.length;
     final double reusedPenalty = (reusedEntries.length / total) * 50.0;
     final double weakPenalty = (weakEntries.length / total) * 50.0;
@@ -129,7 +134,7 @@ class VaultWatchtowerEngine {
       passwordReuseCount: passwordReuseCount,
       weakEntries: weakEntries,
       weakEntropyMap: weakEntropyMap,
-      missing2faEntries: const [],
+      missing2faEntries: missing2faEntries,
     );
   }
 }

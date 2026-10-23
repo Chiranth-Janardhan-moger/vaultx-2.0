@@ -8,11 +8,13 @@ import 'package:vaultx/core/storage/app_secure_storage.dart';
 import 'package:vaultx/core/storage/app_settings_storage.dart';
 import 'package:vaultx/core/theme/happy_feedback.dart';
 
-/// App globals holding the root ScaffoldMessenger key for background-safe toasts.
+/// App globals holding the root Navigator & ScaffoldMessenger keys for background-safe overlays & toasts.
 class AppGlobals {
   AppGlobals._();
   static final GlobalKey<ScaffoldMessengerState> scaffoldMessengerKey =
       GlobalKey<ScaffoldMessengerState>();
+  static final GlobalKey<NavigatorState> navigatorKey =
+      GlobalKey<NavigatorState>();
 }
 
 /// Configurable clipboard auto-wipe duration options.

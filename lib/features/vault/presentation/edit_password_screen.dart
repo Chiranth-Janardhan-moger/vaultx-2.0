@@ -6,14 +6,36 @@ import 'package:vaultx/core/theme/happy_feedback.dart';
 import 'package:vaultx/features/vault/domain/vault_password_entry.dart';
 import 'package:vaultx/features/vault/presentation/providers/vault_passwords_provider.dart';
 
-/// Edit Password / Secure Note Screen
+class _CustomFieldEditItem {
+  final String id;
+  final TextEditingController labelController;
+  final TextEditingController valueController;
+  bool isConcealed;
+
+  _CustomFieldEditItem({
+    required this.id,
+    required this.labelController,
+    required this.valueController,
+    this.isConcealed = true,
+  });
+
+  void dispose() {
+    labelController.dispose();
+    valueController.dispose();
+  }
+}
+
+/// Screen 4: Edit Password / Credential Screen
 ///
-/// Dedicated interactive edit screen for modifying credentials,
-/// 2FA TOTP secret keys, website URLs, and secure notes.
+/// Supports editing standard credentials, alphanumeric PINs (e.g. cUdXa),
+/// custom banking secure fields, categories, and secure note content.
 class EditPasswordScreen extends ConsumerStatefulWidget {
   final VaultPasswordEntry entry;
 
-  const EditPasswordScreen({super.key, required this.entry});
+  const EditPasswordScreen({
+    super.key,
+    required this.entry,
+  });
 
   @override
   ConsumerState<EditPasswordScreen> createState() => _EditPasswordScreenState();
@@ -21,13 +43,19 @@ class EditPasswordScreen extends ConsumerStatefulWidget {
 
 class _EditPasswordScreenState extends ConsumerState<EditPasswordScreen> {
   bool _revealPassword = false;
+  bool _revealPin = false;
+  bool _revealTransactionPin = false;
 
   late TextEditingController _titleController;
   late TextEditingController _usernameController;
   late TextEditingController _passwordController;
+  late TextEditingController _pinController;
+  late TextEditingController _transactionPinController;
   late TextEditingController _websiteController;
   late TextEditingController _notesController;
   late String _selectedCategory;
+
+  final List<_CustomFieldEditItem> _customFields = [];
 
   @override
   void initState() {
@@ -35,9 +63,20 @@ class _EditPasswordScreenState extends ConsumerState<EditPasswordScreen> {
     _titleController = TextEditingController(text: widget.entry.title);
     _usernameController = TextEditingController(text: widget.entry.username);
     _passwordController = TextEditingController(text: widget.entry.password);
+    _pinController = TextEditingController(text: widget.entry.pin);
+    _transactionPinController = TextEditingController(text: widget.entry.transactionPin);
     _websiteController = TextEditingController(text: widget.entry.websiteUrl);
     _notesController = TextEditingController(text: widget.entry.notes);
     _selectedCategory = widget.entry.category;
+
+    for (final cf in widget.entry.customFields) {
+      _customFields.add(_CustomFieldEditItem(
+        id: cf.id,
+        labelController: TextEditingController(text: cf.label),
+        valueController: TextEditingController(text: cf.value),
+        isConcealed: cf.isConcealed,
+      ));
+    }
   }
 
   void _openAddCategory() async {
@@ -47,13 +86,56 @@ class _EditPasswordScreenState extends ConsumerState<EditPasswordScreen> {
     }
   }
 
+  void _addCustomField([String label = '', String value = '', bool isConcealed = true]) {
+    HapticFeedback.selectionClick();
+    setState(() {
+      _customFields.add(_CustomFieldEditItem(
+        id: 'field-${DateTime.now().microsecondsSinceEpoch}-${_customFields.length}',
+        labelController: TextEditingController(text: label),
+        valueController: TextEditingController(text: value),
+        isConcealed: isConcealed,
+      ));
+    });
+  }
+
+  void _removeCustomField(int index) {
+    HapticFeedback.mediumImpact();
+    setState(() {
+      final item = _customFields.removeAt(index);
+      item.dispose();
+    });
+  }
+
+  void _moveCustomFieldUp(int index) {
+    if (index <= 0) return;
+    HapticFeedback.selectionClick();
+    setState(() {
+      final item = _customFields.removeAt(index);
+      _customFields.insert(index - 1, item);
+    });
+  }
+
+  void _moveCustomFieldDown(int index) {
+    if (index >= _customFields.length - 1) return;
+    HapticFeedback.selectionClick();
+    setState(() {
+      final item = _customFields.removeAt(index);
+      _customFields.insert(index + 1, item);
+    });
+  }
+
   @override
   void dispose() {
     _titleController.dispose();
     _usernameController.dispose();
     _passwordController.dispose();
+    _pinController.dispose();
+    _transactionPinController.dispose();
     _websiteController.dispose();
     _notesController.dispose();
+    for (final field in _customFields) {
+      field.dispose();
+    }
     super.dispose();
   }
 
@@ -66,10 +148,40 @@ class _EditPasswordScreenState extends ConsumerState<EditPasswordScreen> {
       return;
     }
 
+    final newPassword = _passwordController.text.trim();
+    final newPin = _pinController.text.trim();
+    final newTransactionPin = _transactionPinController.text.trim();
+
+    final validCustomFields = _customFields
+        .where((f) =>
+            f.labelController.text.trim().isNotEmpty &&
+            f.valueController.text.trim().isNotEmpty)
+        .map((f) => VaultCustomField(
+              id: f.id,
+              label: f.labelController.text.trim(),
+              value: f.valueController.text.trim(),
+              isConcealed: f.isConcealed,
+            ))
+        .toList();
+
+    if (!widget.entry.isSecureNote &&
+        newPassword.isEmpty &&
+        newPin.isEmpty &&
+        newTransactionPin.isEmpty &&
+        validCustomFields.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Please enter a password, PIN, or custom field')),
+      );
+      return;
+    }
+
     final updated = widget.entry.copyWith(
       title: newTitle,
       username: _usernameController.text.trim(),
-      password: _passwordController.text.trim(),
+      password: newPassword,
+      pin: newPin,
+      transactionPin: newTransactionPin,
+      customFields: validCustomFields,
       category: widget.entry.isSecureNote ? 'Notes' : _selectedCategory,
       totpSecret: widget.entry.totpSecret,
       websiteUrl: _websiteController.text.trim(),
@@ -78,12 +190,7 @@ class _EditPasswordScreenState extends ConsumerState<EditPasswordScreen> {
     );
 
     ref.read(vaultPasswordsProvider.notifier).updatePassword(updated);
-    HappyFeedback.show(
-      context,
-      message: widget.entry.isSecureNote
-          ? 'Secure note updated successfully'
-          : 'Credential updated successfully',
-    );
+    HappyFeedback.vibrate();
     Navigator.of(context).pop();
   }
 
@@ -91,27 +198,19 @@ class _EditPasswordScreenState extends ConsumerState<EditPasswordScreen> {
     showDialog<void>(
       context: context,
       builder: (ctx) => AlertDialog(
-        title: Text(widget.entry.isSecureNote ? 'Delete Secure Note?' : 'Delete Password?'),
-        content: Text(
-          'Are you sure you want to delete "${widget.entry.title}"? This action cannot be undone.',
-        ),
+        title: const Text('Delete Credential?'),
+        content: Text('Are you sure you want to permanently delete "${widget.entry.title}"? This action cannot be undone.'),
         actions: [
           TextButton(
             onPressed: () => Navigator.of(ctx).pop(),
             child: const Text('Cancel'),
           ),
           FilledButton(
-            style: FilledButton.styleFrom(
-              backgroundColor: AppColors.rose500,
-              foregroundColor: Colors.white,
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(12),
-              ),
-            ),
+            style: FilledButton.styleFrom(backgroundColor: AppColors.rose500),
             onPressed: () {
+              Navigator.of(ctx).pop();
               ref.read(vaultPasswordsProvider.notifier).deletePassword(widget.entry.id);
               HapticFeedback.heavyImpact();
-              Navigator.of(ctx).pop();
               Navigator.of(context).pop();
             },
             child: const Text('Delete'),
@@ -126,144 +225,73 @@ class _EditPasswordScreenState extends ConsumerState<EditPasswordScreen> {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final cardBg = isDark ? AppColors.darkCardSurface : AppColors.lightCardSurface;
     final borderCol = isDark ? AppColors.darkBorder : AppColors.lightBorder;
-    final inputBg = isDark ? AppColors.darkInputSurface : AppColors.lightInputSurface;
-    final mutedCol = isDark ? AppColors.darkTextMuted : AppColors.lightTextMuted;
-    final isNote = widget.entry.isSecureNote;
-    final currentEntry = ref.watch(vaultPasswordsProvider).allEntries.firstWhere(
-          (e) => e.id == widget.entry.id,
-          orElse: () => widget.entry,
-        );
+    final textMuted = isDark ? AppColors.darkTextMuted : AppColors.lightTextMuted;
     final categories = [
       for (final c in ref.watch(vaultPasswordsProvider).allCategories)
         if (c.toLowerCase() != 'all') c
     ];
+    final isNote = widget.entry.isSecureNote;
 
     return Scaffold(
       appBar: AppBar(
-        leading: TextButton(
-          onPressed: () => Navigator.of(context).pop(),
-          style: TextButton.styleFrom(
-            padding: const EdgeInsets.symmetric(horizontal: 12),
-            overlayColor: AppColors.primaryBlue.withAlpha(25),
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-          ),
-          child: const Text(
-            'Cancel',
-            maxLines: 1,
-            softWrap: false,
-            style: TextStyle(
-              color: AppColors.primaryBlue,
-              fontSize: 16,
-              fontWeight: FontWeight.w400,
-            ),
-          ),
-        ),
-        leadingWidth: 84,
         title: Text(
           isNote ? 'Edit Secure Note' : 'Edit Credential',
-          style: const TextStyle(fontSize: 17, fontWeight: FontWeight.w700),
+          style: const TextStyle(fontWeight: FontWeight.w700),
         ),
-        centerTitle: true,
         actions: [
           IconButton(
             icon: Icon(
-              currentEntry.isFavorite ? Icons.star_rounded : Icons.star_outline_rounded,
-              color: currentEntry.isFavorite ? Colors.amber : mutedCol,
-              size: 22,
+              widget.entry.isFavorite ? Icons.star_rounded : Icons.star_outline_rounded,
+              color: widget.entry.isFavorite ? AppColors.amber500 : null,
             ),
-            tooltip: currentEntry.isFavorite ? 'Remove from favorites' : 'Add to favorites',
-            splashRadius: 20,
+            tooltip: widget.entry.isFavorite ? 'Unfavorite' : 'Favorite',
             onPressed: () {
-              HapticFeedback.selectionClick();
-              ref.read(vaultPasswordsProvider.notifier).toggleFavorite(currentEntry.id);
+              ref.read(vaultPasswordsProvider.notifier).toggleFavorite(widget.entry.id);
+              setState(() {});
             },
           ),
-          TextButton(
-            onPressed: _saveAndClose,
-            style: TextButton.styleFrom(
-              padding: const EdgeInsets.symmetric(horizontal: 12),
-              overlayColor: AppColors.primaryBlue.withAlpha(25),
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-            ),
-            child: const Text(
-              'Done',
-              maxLines: 1,
-              softWrap: false,
-              style: TextStyle(
-                color: AppColors.primaryBlue,
-                fontSize: 16,
-                fontWeight: FontWeight.w400,
+          Padding(
+            padding: const EdgeInsets.only(right: 12),
+            child: TextButton.icon(
+              onPressed: _saveAndClose,
+              icon: const Icon(Icons.check_rounded, size: 18),
+              label: const Text('Done', style: TextStyle(fontWeight: FontWeight.w700)),
+              style: TextButton.styleFrom(
+                foregroundColor: AppColors.primaryBlue,
+                backgroundColor: AppColors.primaryBlue.withAlpha(isDark ? 35 : 20),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
               ),
             ),
           ),
-          const SizedBox(width: 4),
         ],
       ),
       body: SafeArea(
         child: SingleChildScrollView(
-          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              // Monogram Avatar & Editable Title
-              Center(
-                child: Column(
-                  children: [
-                    Container(
-                      width: 76,
-                      height: 76,
-                      decoration: BoxDecoration(
-                        color: isDark ? const Color(0xFF33383E) : const Color(0xFFE2E8F0),
-                        shape: BoxShape.circle,
-                        border: Border.all(color: borderCol, width: 2),
-                      ),
-                      alignment: Alignment.center,
-                      child: isNote
-                          ? const Icon(Icons.note_alt_rounded, size: 36, color: AppColors.primaryBlue)
-                          : Text(
-                              _titleController.text.isNotEmpty
-                                  ? _titleController.text.substring(0, 1).toUpperCase()
-                                  : 'P',
-                              style: const TextStyle(
-                                fontSize: 32,
-                                fontWeight: FontWeight.w700,
-                              ),
-                            ),
-                    ),
-                    const SizedBox(height: 12),
-                    SizedBox(
-                      width: 260,
-                      child: TextField(
-                        controller: _titleController,
-                        textAlign: TextAlign.center,
-                        onChanged: (_) => setState(() {}),
-                        style: const TextStyle(fontSize: 22, fontWeight: FontWeight.w700),
-                        decoration: InputDecoration(
-                          hintText: isNote ? 'Note Title' : 'Service Name',
-                          contentPadding: const EdgeInsets.symmetric(vertical: 8, horizontal: 12),
-                          filled: true,
-                          fillColor: inputBg,
-                          border: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(12),
-                            borderSide: BorderSide(color: borderCol),
-                          ),
-                          enabledBorder: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(12),
-                            borderSide: BorderSide(color: borderCol),
-                          ),
-                          focusedBorder: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(12),
-                            borderSide: const BorderSide(color: AppColors.primaryBlue, width: 1.5),
-                          ),
-                        ),
-                      ),
-                    ),
-                  ],
+              // Title / Service Name
+              Container(
+                decoration: BoxDecoration(
+                  color: cardBg,
+                  borderRadius: BorderRadius.circular(20),
+                  border: Border.all(color: borderCol),
+                ),
+                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+                child: TextField(
+                  controller: _titleController,
+                  style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
+                  decoration: InputDecoration(
+                    labelText: isNote ? 'Note Title' : 'Title / Service',
+                    border: InputBorder.none,
+                    isDense: true,
+                  ),
                 ),
               ),
-              const SizedBox(height: 24),
+              const SizedBox(height: 18),
 
-              // Credentials Group
+              // Credential Credentials Group (Only for non-notes)
               if (!isNote) ...[
                 Text(
                   'CREDENTIALS',
@@ -271,7 +299,7 @@ class _EditPasswordScreenState extends ConsumerState<EditPasswordScreen> {
                     fontSize: 11,
                     fontWeight: FontWeight.w700,
                     letterSpacing: 1.0,
-                    color: isDark ? AppColors.darkTextMuted : AppColors.lightTextMuted,
+                    color: textMuted,
                   ),
                 ),
                 const SizedBox(height: 10),
@@ -298,8 +326,9 @@ class _EditPasswordScreenState extends ConsumerState<EditPasswordScreen> {
                             Expanded(
                               child: TextField(
                                 controller: _usernameController,
+                                autocorrect: false,
                                 decoration: const InputDecoration(
-                                  hintText: 'user@example.com',
+                                  hintText: 'alex.morgan or email',
                                   border: InputBorder.none,
                                   isDense: true,
                                 ),
@@ -346,9 +375,266 @@ class _EditPasswordScreenState extends ConsumerState<EditPasswordScreen> {
                           ],
                         ),
                       ),
+                      Divider(height: 1, color: borderCol),
+
+                      // ATM PIN Row (Alphanumeric capable)
+                      Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                        child: Row(
+                          children: [
+                            const SizedBox(
+                              width: 85,
+                              child: Text(
+                                'ATM PIN',
+                                style: TextStyle(fontSize: 14, fontWeight: FontWeight.w500),
+                              ),
+                            ),
+                            Expanded(
+                              child: TextField(
+                                controller: _pinController,
+                                keyboardType: TextInputType.text,
+                                obscureText: !_revealPin,
+                                enableSuggestions: false,
+                                autocorrect: false,
+                                decoration: const InputDecoration(
+                                  hintText: '4-6 digits or alphanumeric (cUdXa)',
+                                  border: InputBorder.none,
+                                  isDense: true,
+                                ),
+                              ),
+                            ),
+                            IconButton(
+                              icon: Icon(
+                                _revealPin
+                                    ? Icons.visibility_off_rounded
+                                    : Icons.visibility_rounded,
+                                size: 18,
+                              ),
+                              tooltip: _revealPin ? 'Mask PIN' : 'Show PIN',
+                              onPressed: () => setState(() => _revealPin = !_revealPin),
+                            ),
+                          ],
+                        ),
+                      ),
+                      Divider(height: 1, color: borderCol),
+
+                      // UPI PIN Row (Alphanumeric capable)
+                      Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                        child: Row(
+                          children: [
+                            const SizedBox(
+                              width: 85,
+                              child: Text(
+                                'UPI PIN',
+                                style: TextStyle(fontSize: 14, fontWeight: FontWeight.w500),
+                              ),
+                            ),
+                            Expanded(
+                              child: TextField(
+                                controller: _transactionPinController,
+                                keyboardType: TextInputType.text,
+                                obscureText: !_revealTransactionPin,
+                                enableSuggestions: false,
+                                autocorrect: false,
+                                decoration: const InputDecoration(
+                                  hintText: '4 to 6 digit UPI PIN or secret token',
+                                  border: InputBorder.none,
+                                  isDense: true,
+                                ),
+                              ),
+                            ),
+                            IconButton(
+                              icon: Icon(
+                                _revealTransactionPin
+                                    ? Icons.visibility_off_rounded
+                                    : Icons.visibility_rounded,
+                                size: 18,
+                              ),
+                              tooltip: _revealTransactionPin ? 'Mask UPI PIN' : 'Show UPI PIN',
+                              onPressed: () => setState(() => _revealTransactionPin = !_revealTransactionPin),
+                            ),
+                          ],
+                        ),
+                      ),
                     ],
                   ),
                 ),
+                const SizedBox(height: 18),
+
+                // Custom Secure Fields Section
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Text(
+                      'CUSTOM SECURE FIELDS',
+                      style: TextStyle(
+                        fontSize: 11,
+                        fontWeight: FontWeight.w700,
+                        letterSpacing: 1.0,
+                        color: textMuted,
+                      ),
+                    ),
+                    TextButton.icon(
+                      onPressed: () => _addCustomField(),
+                      icon: const Icon(Icons.add_rounded, size: 16),
+                      label: const Text('Add Field', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600)),
+                      style: TextButton.styleFrom(
+                        foregroundColor: AppColors.primaryBlue,
+                        visualDensity: VisualDensity.compact,
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 6),
+
+                // Preset Quick-Add Chips
+                SingleChildScrollView(
+                  scrollDirection: Axis.horizontal,
+                  child: Row(
+                    children: [
+                      ActionChip(
+                        avatar: const Icon(Icons.badge_outlined, size: 14),
+                        label: const Text('Customer ID', style: TextStyle(fontSize: 11)),
+                        backgroundColor: cardBg,
+                        onPressed: () => _addCustomField('Customer ID', '', false),
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16), side: BorderSide(color: borderCol)),
+                      ),
+                      const SizedBox(width: 6),
+                      ActionChip(
+                        avatar: const Icon(Icons.spellcheck_rounded, size: 14),
+                        label: const Text('Memorable Word', style: TextStyle(fontSize: 11)),
+                        backgroundColor: cardBg,
+                        onPressed: () => _addCustomField('Memorable Word', '', true),
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16), side: BorderSide(color: borderCol)),
+                      ),
+                      const SizedBox(width: 6),
+                      ActionChip(
+                        avatar: const Icon(Icons.grid_4x4_rounded, size: 14),
+                        label: const Text('Card Grid (A-P)', style: TextStyle(fontSize: 11)),
+                        backgroundColor: cardBg,
+                        onPressed: () => _addCustomField('Security Grid', '', true),
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16), side: BorderSide(color: borderCol)),
+                      ),
+                      const SizedBox(width: 6),
+                      ActionChip(
+                        avatar: const Icon(Icons.help_outline_rounded, size: 14),
+                        label: const Text('Security Answer', style: TextStyle(fontSize: 11)),
+                        backgroundColor: cardBg,
+                        onPressed: () => _addCustomField('Security Answer', '', true),
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16), side: BorderSide(color: borderCol)),
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 10),
+
+                if (_customFields.isNotEmpty)
+                  Container(
+                    decoration: BoxDecoration(
+                      color: cardBg,
+                      borderRadius: BorderRadius.circular(20),
+                      border: Border.all(color: borderCol, width: 1),
+                    ),
+                    child: Column(
+                      children: List.generate(_customFields.length, (index) {
+                        final field = _customFields[index];
+                        final isFirst = index == 0;
+                        final isLast = index == _customFields.length - 1;
+
+                        return Column(
+                          children: [
+                            if (!isFirst) Divider(height: 1, color: borderCol),
+                            Padding(
+                              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                              child: Row(
+                                crossAxisAlignment: CrossAxisAlignment.center,
+                                children: [
+                                  // Reorder Controls
+                                  Column(
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      GestureDetector(
+                                        onTap: isFirst ? null : () => _moveCustomFieldUp(index),
+                                        child: Icon(
+                                          Icons.keyboard_arrow_up_rounded,
+                                          size: 18,
+                                          color: isFirst ? borderCol : textMuted,
+                                        ),
+                                      ),
+                                      GestureDetector(
+                                        onTap: isLast ? null : () => _moveCustomFieldDown(index),
+                                        child: Icon(
+                                          Icons.keyboard_arrow_down_rounded,
+                                          size: 18,
+                                          color: isLast ? borderCol : textMuted,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                  const SizedBox(width: 8),
+
+                                  // Field Label Input
+                                  SizedBox(
+                                    width: 105,
+                                    child: TextField(
+                                      controller: field.labelController,
+                                      style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600),
+                                      decoration: InputDecoration(
+                                        hintText: 'Field label',
+                                        hintStyle: TextStyle(fontSize: 12, color: textMuted),
+                                        border: InputBorder.none,
+                                        isDense: true,
+                                      ),
+                                    ),
+                                  ),
+                                  Container(
+                                    width: 1,
+                                    height: 24,
+                                    color: borderCol,
+                                    margin: const EdgeInsets.symmetric(horizontal: 6),
+                                  ),
+
+                                  // Field Value Input
+                                  Expanded(
+                                    child: TextField(
+                                      controller: field.valueController,
+                                      obscureText: field.isConcealed,
+                                      style: const TextStyle(fontSize: 13, fontFamily: 'JetBrains Mono'),
+                                      decoration: InputDecoration(
+                                        hintText: 'Secret value',
+                                        hintStyle: TextStyle(fontSize: 12, color: textMuted, fontFamily: 'Inter'),
+                                        border: InputBorder.none,
+                                        isDense: true,
+                                      ),
+                                    ),
+                                  ),
+
+                                  // Conceal Toggle
+                                  IconButton(
+                                    icon: Icon(
+                                      field.isConcealed ? Icons.visibility_off_rounded : Icons.visibility_rounded,
+                                      size: 18,
+                                      color: textMuted,
+                                    ),
+                                    tooltip: field.isConcealed ? 'Masked secret' : 'Visible field',
+                                    onPressed: () => setState(() => field.isConcealed = !field.isConcealed),
+                                  ),
+
+                                  // Delete Button
+                                  IconButton(
+                                    icon: const Icon(Icons.close_rounded, size: 18, color: AppColors.rose500),
+                                    tooltip: 'Remove field',
+                                    onPressed: () => _removeCustomField(index),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ],
+                        );
+                      }),
+                    ),
+                  ),
                 const SizedBox(height: 18),
               ],
 
@@ -360,7 +646,7 @@ class _EditPasswordScreenState extends ConsumerState<EditPasswordScreen> {
                     fontSize: 11,
                     fontWeight: FontWeight.w700,
                     letterSpacing: 1.0,
-                    color: isDark ? AppColors.darkTextMuted : AppColors.lightTextMuted,
+                    color: textMuted,
                   ),
                 ),
                 const SizedBox(height: 10),
@@ -444,7 +730,7 @@ class _EditPasswordScreenState extends ConsumerState<EditPasswordScreen> {
                   fontSize: 11,
                   fontWeight: FontWeight.w700,
                   letterSpacing: 1.0,
-                  color: isDark ? AppColors.darkTextMuted : AppColors.lightTextMuted,
+                  color: textMuted,
                 ),
               ),
               const SizedBox(height: 10),

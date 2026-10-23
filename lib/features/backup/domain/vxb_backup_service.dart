@@ -69,6 +69,9 @@ class VxbBackupService {
         'username': p.username,
         'email': p.email,
         'password': p.password,
+        'pin': p.pin,
+        'transactionPin': p.transactionPin,
+        'customFields': p.customFields.map((f) => f.toMap()).toList(),
         'category': p.category,
         'websiteUrl': p.websiteUrl,
         'notes': p.notes,
@@ -186,6 +189,13 @@ class VxbBackupService {
     final username = item['username']?.toString() ?? '';
     final email = item['email']?.toString() ?? '';
     final password = item['password']?.toString() ?? '';
+    final pin = item['pin']?.toString() ?? '';
+    final transactionPin = item['transactionPin']?.toString() ?? '';
+    final customFields = (item['customFields'] as List<dynamic>?)
+            ?.whereType<Map<String, dynamic>>()
+            .map(VaultCustomField.fromMap)
+            .toList() ??
+        const <VaultCustomField>[];
     final rawCategory = item['category']?.toString() ?? item['folder']?.toString() ?? 'Others';
     final category = (rawCategory.trim().isEmpty || rawCategory.trim().toLowerCase() == 'all')
         ? 'Others'
@@ -219,6 +229,9 @@ class VxbBackupService {
       username: username,
       email: email,
       password: password,
+      pin: pin,
+      transactionPin: transactionPin,
+      customFields: customFields,
       category: category,
       websiteUrl: websiteUrl,
       notes: notes,

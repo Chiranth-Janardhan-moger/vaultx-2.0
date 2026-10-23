@@ -1,9 +1,14 @@
+import 'dart:math';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:vaultx/core/services/clipboard_security_service.dart';
 import 'package:vaultx/core/theme/app_theme.dart';
 import 'package:vaultx/core/theme/happy_feedback.dart';
+import 'package:vaultx/core/widgets/character_indexer_chips.dart';
+import 'package:vaultx/core/widgets/gliding_category_bar.dart';
+import 'package:vaultx/features/desktop/presentation/desktop_master_detail_view.dart';
 import 'package:vaultx/features/vault/domain/vault_password_entry.dart';
 import 'package:vaultx/features/vault/domain/vault_watchtower_engine.dart';
 import 'package:vaultx/features/vault/presentation/providers/vault_passwords_provider.dart';
@@ -411,6 +416,10 @@ class _PasswordsVaultScreenState extends ConsumerState<PasswordsVaultScreen> {
 
   @override
   Widget build(BuildContext context) {
+    if (defaultTargetPlatform == TargetPlatform.windows) {
+      return const DesktopMasterDetailView();
+    }
+
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final vaultState = ref.watch(vaultPasswordsProvider);
     final entries = vaultState.filteredEntries;
@@ -532,74 +541,85 @@ class _PasswordsVaultScreenState extends ConsumerState<PasswordsVaultScreen> {
               ),
             ),
 
-            // Category Filter Pills
+            // Category Filter Pills (Apple HIG & OriginOS Gliding Magnetic Bar)
             SliverToBoxAdapter(
-              child: SizedBox(
-                height: 50,
-                child: ListView.separated(
-                  padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
-                  scrollDirection: Axis.horizontal,
-                  itemCount: categories.length + 1,
-                  separatorBuilder: (_, __) => const SizedBox(width: 8),
-                  itemBuilder: (context, index) {
-                    if (index == categories.length) {
-                      return Semantics(
-                        button: true,
-                        label: 'Add Category',
-                        child: GestureDetector(
-                          onTap: _openAddCategory,
-                          child: AnimatedContainer(
-                            duration: const Duration(milliseconds: 180),
-                            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
-                            decoration: BoxDecoration(
-                              color: cardBg,
-                              borderRadius: BorderRadius.circular(12),
-                              border: Border.all(
-                                color: AppColors.primaryBlue.withAlpha(140),
-                                width: 1.2,
-                              ),
-                            ),
-                            alignment: Alignment.center,
-                            child: const Row(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                Icon(Icons.add_rounded, size: 16, color: AppColors.primaryBlue),
-                                SizedBox(width: 4),
-                                Text(
-                                  '+ Add',
-                                  style: TextStyle(
-                                    fontSize: 13,
-                                    fontWeight: FontWeight.w700,
-                                    color: AppColors.primaryBlue,
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                        ),
-                      );
+              child: Padding(
+                padding: const EdgeInsets.only(top: 4, bottom: 8),
+                child: GlidingCategoryBar(
+                  items: categories.map((cat) {
+                    final cleanCat = cat.toLowerCase();
+                    final isAll = cleanCat == 'all';
+                    final isFav = cleanCat == 'favorites' || cleanCat.contains('fav');
+                    final isPins = cleanCat == 'pins' || cleanCat == 'pin';
+                    final isOthers = cleanCat == 'others';
+
+                    final activeList = vaultState.activeEntries;
+                    final int count;
+                    if (isAll) {
+                      count = activeList.length;
+                    } else if (isFav) {
+                      count = activeList.where((e) => e.isFavorite).length;
+                    } else if (isPins) {
+                      count = activeList
+                          .where((e) => e.hasPin || e.isPinOnly || e.category.toLowerCase() == 'pins' || e.category.toLowerCase() == 'pin')
+                          .length;
+                    } else if (isOthers) {
+                      count = activeList
+                          .where((e) => e.category.toLowerCase() == 'others' ||
+                              !VaultPasswordsState.defaultCategories.any((c) => c.toLowerCase() == e.category.toLowerCase()))
+                          .length;
+                    } else {
+                      count = activeList
+                          .where((e) => e.category.toLowerCase() == cleanCat)
+                          .length;
                     }
 
-                    final cat = categories[index];
-                    final isSelected = vaultState.selectedCategory.toLowerCase() == cat.toLowerCase();
-                    final isFav = cat.toLowerCase() == 'favorites';
-                    final isAll = cat.toLowerCase() == 'all';
-
-                    return _CategoryFilterPill(
-                      category: cat,
-                      isSelected: isSelected,
-                      isDark: isDark,
-                      cardBg: cardBg,
-                      borderCol: borderCol,
-                      onTap: () {
-                        HapticFeedback.selectionClick();
-                        ref.read(vaultPasswordsProvider.notifier).setSelectedCategory(cat);
-                      },
-                      onLongPress: (isAll || isFav)
-                          ? null
-                          : () => _showCategoryActionSheet(cat),
+                    return GlidingCategoryItem(
+                      id: cat,
+                      label: cat,
+                      count: count,
+                      icon: isFav ? Icons.star_rounded : null,
+                      dotColor: (!isAll && !isFav) ? getCategoryColor(cat) : null,
+                      onLongPress: (isAll || isFav) ? null : () => _showCategoryActionSheet(cat),
                     );
+                  }).toList(),
+                  selectedId: vaultState.selectedCategory,
+                  onSelected: (selectedCat) {
+                    ref.read(vaultPasswordsProvider.notifier).setSelectedCategory(selectedCat);
                   },
+                  trailing: Semantics(
+                    button: true,
+                    label: 'Add Category',
+                    child: GestureDetector(
+                      onTap: _openAddCategory,
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
+                        decoration: BoxDecoration(
+                          color: cardBg,
+                          borderRadius: BorderRadius.circular(14),
+                          border: Border.all(
+                            color: AppColors.primaryBlue.withAlpha(140),
+                            width: 1.2,
+                          ),
+                        ),
+                        child: const Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(Icons.add_rounded, size: 16, color: AppColors.primaryBlue),
+                            SizedBox(width: 4),
+                            Text(
+                              'Add',
+                              style: TextStyle(
+                                fontSize: 13,
+                                fontWeight: FontWeight.w700,
+                                color: AppColors.primaryBlue,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ),
                 ),
               ),
             ),
@@ -679,7 +699,9 @@ class _PasswordsVaultScreenState extends ConsumerState<PasswordsVaultScreen> {
                                                     ? entry.username
                                                     : (entry.email.isNotEmpty
                                                         ? entry.email
-                                                        : (entry.isSecureNote ? 'Secure Note' : 'No username')),
+                                                        : (entry.isSecureNote
+                                                            ? 'Secure Note'
+                                                            : (entry.isPinOnly ? 'Security PIN' : 'No username'))),
                                                 maxLines: 1,
                                                 overflow: TextOverflow.ellipsis,
                                                 style: TextStyle(
@@ -820,98 +842,328 @@ class _PasswordsVaultScreenState extends ConsumerState<PasswordsVaultScreen> {
   }
 }
 
-class _CategoryFilterPill extends StatefulWidget {
-  final String category;
-  final bool isSelected;
-  final bool isDark;
-  final Color cardBg;
-  final Color borderCol;
-  final VoidCallback onTap;
-  final VoidCallback? onLongPress;
 
-  const _CategoryFilterPill({
-    required this.category,
-    required this.isSelected,
-    required this.isDark,
-    required this.cardBg,
-    required this.borderCol,
-    required this.onTap,
-    this.onLongPress,
+/// Secure offline scrambled PIN keypad sheet.
+///
+/// Randomizes digit order (0-9) to defend against shoulder-surfing and smudge attacks.
+class ScrambledPinKeypad extends StatefulWidget {
+  final String title;
+  final String pin;
+
+  const ScrambledPinKeypad({
+    super.key,
+    required this.title,
+    required this.pin,
   });
 
   @override
-  State<_CategoryFilterPill> createState() => _CategoryFilterPillState();
+  State<ScrambledPinKeypad> createState() => _ScrambledPinKeypadState();
 }
 
-class _CategoryFilterPillState extends State<_CategoryFilterPill> {
-  bool _isHovered = false;
+class _ScrambledPinKeypadState extends State<ScrambledPinKeypad> {
+  late List<int> _digits;
+  String _enteredPin = '';
+  bool _revealInput = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _reshuffle();
+  }
+
+  void _reshuffle() {
+    final list = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9];
+    list.shuffle(Random.secure());
+    setState(() => _digits = list);
+  }
+
+  void _onDigit(int digit) {
+    if (_enteredPin.length >= 12) return;
+    HapticFeedback.lightImpact();
+    setState(() {
+      _enteredPin += digit.toString();
+    });
+  }
+
+  void _onBackspace() {
+    if (_enteredPin.isEmpty) return;
+    HapticFeedback.lightImpact();
+    setState(() {
+      _enteredPin = _enteredPin.substring(0, _enteredPin.length - 1);
+    });
+  }
+
+  void _onClear() {
+    HapticFeedback.mediumImpact();
+    setState(() {
+      _enteredPin = '';
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
-    final isFav = widget.category.toLowerCase() == 'favorites';
-    final isAll = widget.category.toLowerCase() == 'all';
-    final catColor = getCategoryColor(widget.category);
-    final showDot = !isAll && !isFav && !widget.isSelected && !_isHovered;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final cardBg = isDark ? AppColors.darkCardSurface : AppColors.lightCardSurface;
+    final inputBg = isDark ? AppColors.darkInputSurface : AppColors.lightInputSurface;
+    final borderCol = isDark ? AppColors.darkBorder : AppColors.lightBorder;
+    final mutedCol = isDark ? AppColors.darkTextMuted : AppColors.lightTextMuted;
 
-    return Semantics(
-      button: true,
-      selected: widget.isSelected,
-      child: MouseRegion(
-        onEnter: (_) => setState(() => _isHovered = true),
-        onExit: (_) => setState(() => _isHovered = false),
-        cursor: SystemMouseCursors.click,
-        child: GestureDetector(
-          onTap: widget.onTap,
-          onLongPress: widget.onLongPress,
-          child: AnimatedContainer(
-            duration: const Duration(milliseconds: 180),
-            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
-            decoration: BoxDecoration(
-              color: widget.isSelected ? AppColors.primaryBlue : widget.cardBg,
-              borderRadius: BorderRadius.circular(12),
-              border: Border.all(
-                color: widget.isSelected ? AppColors.primaryBlue : widget.borderCol,
-                width: 1,
-              ),
-            ),
-            alignment: Alignment.center,
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                if (isFav) ...[
-                  Icon(
-                    Icons.star_rounded,
-                    size: 15,
-                    color: widget.isSelected ? Colors.white : Colors.amber,
-                  ),
-                  const SizedBox(width: 5),
-                ] else if (showDot) ...[
-                  Container(
-                    width: 6,
-                    height: 6,
-                    decoration: BoxDecoration(
-                      color: catColor,
-                      shape: BoxShape.circle,
-                    ),
-                  ),
-                  const SizedBox(width: 6),
-                ],
-                Text(
-                  widget.category,
-                  style: TextStyle(
-                    fontSize: 13,
-                    fontWeight: widget.isSelected ? FontWeight.w700 : FontWeight.w500,
-                    color: widget.isSelected
-                        ? Colors.white
-                        : (widget.isDark ? AppColors.darkTextPrimary : AppColors.lightTextPrimary),
+    final isAlphanumeric = RegExp(r'[^0-9]').hasMatch(widget.pin);
+    final isMatch = _enteredPin.isNotEmpty && _enteredPin == widget.pin;
+    final isMismatch = _enteredPin.length >= widget.pin.length && !isMatch;
+
+    return Center(
+      child: ConstrainedBox(
+        constraints: const BoxConstraints(maxWidth: 420),
+        child: Container(
+          padding: EdgeInsets.fromLTRB(20, 14, 20, 24 + MediaQuery.of(context).viewInsets.bottom),
+          decoration: BoxDecoration(
+            color: cardBg,
+            borderRadius: const BorderRadius.vertical(top: Radius.circular(28)),
+            border: Border.all(color: borderCol, width: 1),
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Center(
+                child: Container(
+                  width: 36,
+                  height: 4,
+                  decoration: BoxDecoration(
+                    color: isDark ? Colors.white24 : Colors.black26,
+                    borderRadius: BorderRadius.circular(2),
                   ),
                 ),
+              ),
+              const SizedBox(height: 14),
+              Row(
+                children: [
+                  Container(
+                    width: 44,
+                    height: 44,
+                    decoration: BoxDecoration(
+                      color: const Color(0xFF10B981).withAlpha(isDark ? 35 : 22),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    alignment: Alignment.center,
+                    child: const Icon(
+                      Icons.dialpad_rounded,
+                      color: Color(0xFF10B981),
+                      size: 22,
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          '${widget.title} Keypad',
+                          style: const TextStyle(
+                            fontSize: 17,
+                            fontWeight: FontWeight.w800,
+                            letterSpacing: -0.2,
+                          ),
+                        ),
+                        const SizedBox(height: 2),
+                        Text(
+                          'Scrambled Anti-Surveillance Keypad',
+                          style: TextStyle(
+                            fontSize: 12,
+                            fontWeight: FontWeight.w500,
+                            color: mutedCol,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  IconButton(
+                    icon: const Icon(Icons.close_rounded, size: 20),
+                    tooltip: 'Close',
+                    onPressed: () => Navigator.of(context).pop(),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 16),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                decoration: BoxDecoration(
+                  color: inputBg,
+                  borderRadius: BorderRadius.circular(16),
+                  border: Border.all(
+                    color: isMatch
+                        ? const Color(0xFF10B981)
+                        : isMismatch
+                            ? AppColors.rose500
+                            : borderCol,
+                    width: isMatch || isMismatch ? 1.5 : 1.0,
+                  ),
+                ),
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            isMatch
+                                ? 'PIN Verified Match'
+                                : isMismatch
+                                    ? 'PIN Does Not Match'
+                                    : 'Test PIN Verification',
+                            style: TextStyle(
+                              fontSize: 11,
+                              fontWeight: FontWeight.w600,
+                              color: isMatch
+                                  ? const Color(0xFF10B981)
+                                  : isMismatch
+                                      ? AppColors.rose500
+                                      : mutedCol,
+                            ),
+                          ),
+                          const SizedBox(height: 4),
+                          Text(
+                            _enteredPin.isEmpty
+                                ? 'Tap scrambled digits to test'
+                                : _revealInput
+                                    ? _enteredPin
+                                    : List.filled(_enteredPin.length, '●').join(' '),
+                            style: TextStyle(
+                              fontFamily: 'JetBrains Mono',
+                              fontSize: 18,
+                              fontWeight: FontWeight.w700,
+                              letterSpacing: _revealInput ? 3 : 2,
+                              color: _enteredPin.isEmpty ? mutedCol : null,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    if (_enteredPin.isNotEmpty)
+                      IconButton(
+                        icon: Icon(
+                          _revealInput ? Icons.visibility_off_rounded : Icons.visibility_rounded,
+                          size: 18,
+                        ),
+                        tooltip: _revealInput ? 'Mask input' : 'Reveal input',
+                        onPressed: () => setState(() => _revealInput = !_revealInput),
+                      ),
+                    IconButton(
+                      icon: const Icon(Icons.shuffle_rounded, size: 18),
+                      tooltip: 'Reshuffle keypad',
+                      onPressed: () {
+                        HapticFeedback.selectionClick();
+                        _reshuffle();
+                      },
+                    ),
+                  ],
+                ),
+              ),
+              if (isAlphanumeric) ...[
+                const SizedBox(height: 14),
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 4),
+                  child: CharacterIndexerChips(
+                    secret: widget.pin,
+                    isRevealed: _revealInput,
+                    label: 'Alphanumeric PIN Indexer',
+                  ),
+                ),
+                const SizedBox(height: 12),
+                TextField(
+                  onChanged: (val) {
+                    setState(() => _enteredPin = val);
+                  },
+                  obscureText: !_revealInput,
+                  autocorrect: false,
+                  enableSuggestions: false,
+                  decoration: InputDecoration(
+                    hintText: 'Type alphanumeric code to test match',
+                    filled: true,
+                    fillColor: inputBg,
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(14),
+                      borderSide: BorderSide(color: borderCol),
+                    ),
+                    contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                  ),
+                ),
+              ] else ...[
+                const SizedBox(height: 16),
+                for (int row = 0; row < 4; row++) ...[
+                  Row(
+                    children: [
+                      for (int col = 0; col < 3; col++) ...[
+                        Expanded(
+                          child: Padding(
+                            padding: const EdgeInsets.all(4.0),
+                            child: _buildKey(row, col, cardBg, inputBg, borderCol, mutedCol),
+                          ),
+                        ),
+                      ],
+                    ],
+                  ),
+                ],
               ],
-            ),
+            ],
           ),
         ),
       ),
     );
+  }
+
+  Widget _buildKey(int row, int col, Color cardBg, Color inputBg, Color borderCol, Color mutedCol) {
+    if (row == 3 && col == 0) {
+      return OutlinedButton(
+        style: OutlinedButton.styleFrom(
+          padding: const EdgeInsets.symmetric(vertical: 14),
+          side: BorderSide(color: borderCol),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+        ),
+        onPressed: _onClear,
+        child: Text(
+          'CLR',
+          style: TextStyle(
+            fontSize: 14,
+            fontWeight: FontWeight.w700,
+            color: mutedCol,
+          ),
+        ),
+      );
+    } else if (row == 3 && col == 2) {
+      return OutlinedButton(
+        style: OutlinedButton.styleFrom(
+          padding: const EdgeInsets.symmetric(vertical: 14),
+          side: BorderSide(color: borderCol),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+        ),
+        onPressed: _onBackspace,
+        child: Icon(Icons.backspace_outlined, size: 20, color: mutedCol),
+      );
+    } else {
+      final digitIndex = row == 3 && col == 1 ? 9 : row * 3 + col;
+      final digit = _digits[digitIndex];
+      return FilledButton(
+        style: FilledButton.styleFrom(
+          backgroundColor: inputBg,
+          foregroundColor: Theme.of(context).textTheme.bodyLarge?.color,
+          padding: const EdgeInsets.symmetric(vertical: 14),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(14),
+            side: BorderSide(color: borderCol),
+          ),
+        ),
+        onPressed: () => _onDigit(digit),
+        child: Text(
+          '$digit',
+          style: const TextStyle(
+            fontSize: 20,
+            fontWeight: FontWeight.w700,
+          ),
+        ),
+      );
+    }
   }
 }
 
@@ -927,6 +1179,14 @@ class _CredentialInspectionSheet extends ConsumerStatefulWidget {
 
 class _CredentialInspectionSheetState extends ConsumerState<_CredentialInspectionSheet> {
   bool _revealPassword = false;
+  bool _revealPin = false;
+  bool _revealTransactionPin = false;
+  final Set<String> _revealedCustomFieldIds = {};
+
+  String _formatMaskedPin(String pin) {
+    final count = pin.isNotEmpty ? pin.length.clamp(1, 16) : 4;
+    return List.filled(count, '●').join(' ');
+  }
 
   void _copyToClipboard(String text, String label) {
     HapticFeedback.lightImpact();
@@ -937,7 +1197,8 @@ class _CredentialInspectionSheetState extends ConsumerState<_CredentialInspectio
       label: label,
       isSensitive: label.toLowerCase().contains('password') ||
           label.toLowerCase().contains('key') ||
-          label.toLowerCase().contains('secret'),
+          label.toLowerCase().contains('secret') ||
+          label.toLowerCase().contains('pin'),
     );
   }
 
@@ -1131,88 +1392,376 @@ class _CredentialInspectionSheetState extends ConsumerState<_CredentialInspectio
                         Divider(height: 1, indent: 16, endIndent: 16, color: borderCol.withAlpha(80)),
 
                         // Password Row
-                        Padding(
-                          padding: const EdgeInsets.fromLTRB(16, 12, 10, 12),
-                          child: Row(
-                            children: [
-                              Expanded(
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    Text(
-                                      'Password',
-                                      style: TextStyle(
-                                        fontSize: 11,
-                                        fontWeight: FontWeight.w500,
-                                        color: mutedCol,
-                                      ),
-                                    ),
-                                    const SizedBox(height: 2),
-                                    Text(
-                                      _revealPassword
-                                          ? widget.entry.password
-                                          : '••••••••••••••••',
-                                      style: const TextStyle(
-                                        fontFamily: 'JetBrains Mono',
-                                        fontSize: 15,
-                                        fontWeight: FontWeight.w600,
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              ),
-                              IconButton(
-                                icon: Icon(
-                                  _revealPassword
-                                      ? Icons.visibility_off_rounded
-                                      : Icons.visibility_rounded,
-                                  size: 18,
-                                ),
-                                tooltip: _revealPassword ? 'Mask password' : 'Show password',
-                                onPressed: () {
-                                  setState(() => _revealPassword = !_revealPassword);
-                                },
-                              ),
-                              IconButton(
-                                icon: const Icon(Icons.copy_rounded, size: 18),
-                                tooltip: 'Copy password',
-                                onPressed: () => _copyToClipboard(widget.entry.password, 'Password'),
-                              ),
-                            ],
-                          ),
-                        ),
-
-                        // Security Entropy Evaluation Row
-                        if (widget.entry.password.isNotEmpty) ...[
-                          Divider(height: 1, indent: 16, endIndent: 16, color: borderCol.withAlpha(80)),
+                        if (currentEntry.password.isNotEmpty || !currentEntry.hasPin) ...[
                           Padding(
-                            padding: const EdgeInsets.fromLTRB(16, 10, 16, 10),
+                            padding: const EdgeInsets.fromLTRB(16, 12, 10, 12),
                             child: Row(
                               children: [
-                                Container(
-                                  width: 8,
-                                  height: 8,
-                                  decoration: BoxDecoration(
-                                    color: strengthColor,
-                                    shape: BoxShape.circle,
+                                Expanded(
+                                  child: Column(
+                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    children: [
+                                      Text(
+                                        'Password',
+                                        style: TextStyle(
+                                          fontSize: 11,
+                                          fontWeight: FontWeight.w500,
+                                          color: mutedCol,
+                                        ),
+                                      ),
+                                      const SizedBox(height: 2),
+                                      Text(
+                                        _revealPassword
+                                            ? currentEntry.password
+                                            : '••••••••••••••••',
+                                        style: const TextStyle(
+                                          fontFamily: 'JetBrains Mono',
+                                          fontSize: 15,
+                                          fontWeight: FontWeight.w600,
+                                        ),
+                                      ),
+                                    ],
                                   ),
                                 ),
+                                IconButton(
+                                  icon: Icon(
+                                    _revealPassword
+                                        ? Icons.visibility_off_rounded
+                                        : Icons.visibility_rounded,
+                                    size: 18,
+                                  ),
+                                  tooltip: _revealPassword ? 'Mask password' : 'Show password',
+                                  onPressed: () {
+                                    setState(() => _revealPassword = !_revealPassword);
+                                  },
+                                ),
+                                IconButton(
+                                  icon: const Icon(Icons.copy_rounded, size: 18),
+                                  tooltip: 'Copy password',
+                                  onPressed: () => _copyToClipboard(currentEntry.password, 'Password'),
+                                ),
+                              ],
+                            ),
+                          ),
+                          if (_revealPassword && currentEntry.password.isNotEmpty) ...[
+                            Padding(
+                              padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
+                              child: CharacterIndexerChips(
+                                secret: currentEntry.password,
+                                isRevealed: true,
+                                label: 'Password Character Position Index',
+                              ),
+                            ),
+                          ],
+
+                          // Security Entropy Evaluation Row
+                          if (currentEntry.password.isNotEmpty) ...[
+                            Divider(height: 1, indent: 16, endIndent: 16, color: borderCol.withAlpha(80)),
+                            Padding(
+                              padding: const EdgeInsets.fromLTRB(16, 10, 16, 10),
+                              child: Row(
+                                children: [
+                                  Container(
+                                    width: 8,
+                                    height: 8,
+                                    decoration: BoxDecoration(
+                                      color: strengthColor,
+                                      shape: BoxShape.circle,
+                                    ),
+                                  ),
+                                  const SizedBox(width: 8),
+                                  Text(
+                                    'Security: $strengthLabel',
+                                    style: TextStyle(
+                                      fontSize: 12,
+                                      fontWeight: FontWeight.w600,
+                                      color: strengthColor,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ],
+                        ],
+
+                        // ATM PIN Row
+                        if (currentEntry.pin.isNotEmpty) ...[
+                          Divider(height: 1, indent: 16, endIndent: 16, color: borderCol.withAlpha(80)),
+                          Padding(
+                            padding: const EdgeInsets.fromLTRB(16, 12, 10, 12),
+                            child: Row(
+                              children: [
+                                Expanded(
+                                  child: Column(
+                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    children: [
+                                      Text(
+                                        'ATM / Bank PIN',
+                                        style: TextStyle(
+                                          fontSize: 11,
+                                          fontWeight: FontWeight.w500,
+                                          color: mutedCol,
+                                        ),
+                                      ),
+                                      const SizedBox(height: 2),
+                                      Text(
+                                        _revealPin
+                                            ? currentEntry.pin
+                                            : _formatMaskedPin(currentEntry.pin),
+                                        style: const TextStyle(
+                                          fontFamily: 'JetBrains Mono',
+                                          fontSize: 15,
+                                          fontWeight: FontWeight.w600,
+                                          letterSpacing: 2,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                                IconButton(
+                                  icon: const Icon(Icons.dialpad_rounded, size: 18),
+                                  tooltip: 'Keypad',
+                                  onPressed: () {
+                                    HapticFeedback.lightImpact();
+                                    showModalBottomSheet<void>(
+                                      context: context,
+                                      isScrollControlled: true,
+                                      backgroundColor: Colors.transparent,
+                                      builder: (ctx) => ScrambledPinKeypad(
+                                        title: 'ATM PIN',
+                                        pin: currentEntry.pin,
+                                      ),
+                                    );
+                                  },
+                                ),
+                                IconButton(
+                                  icon: Icon(
+                                    _revealPin
+                                        ? Icons.visibility_off_rounded
+                                        : Icons.visibility_rounded,
+                                    size: 18,
+                                  ),
+                                  tooltip: _revealPin ? 'Mask PIN' : 'Show PIN',
+                                  onPressed: () {
+                                    setState(() => _revealPin = !_revealPin);
+                                  },
+                                ),
+                                IconButton(
+                                  icon: const Icon(Icons.copy_rounded, size: 18),
+                                  tooltip: 'Copy PIN',
+                                  onPressed: () => _copyToClipboard(currentEntry.pin, 'Bank PIN'),
+                                ),
+                              ],
+                            ),
+                          ),
+                          if (_revealPin && currentEntry.pin.isNotEmpty) ...[
+                            Padding(
+                              padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
+                              child: CharacterIndexerChips(
+                                secret: currentEntry.pin,
+                                isRevealed: true,
+                                label: 'ATM PIN Character Position Index',
+                              ),
+                            ),
+                          ],
+                        ],
+
+                        // UPI PIN Row
+                        if (currentEntry.transactionPin.isNotEmpty) ...[
+                          Divider(height: 1, indent: 16, endIndent: 16, color: borderCol.withAlpha(80)),
+                          Padding(
+                            padding: const EdgeInsets.fromLTRB(16, 12, 10, 12),
+                            child: Row(
+                              children: [
+                                Expanded(
+                                  child: Column(
+                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    children: [
+                                      Text(
+                                        'UPI / Transaction PIN',
+                                        style: TextStyle(
+                                          fontSize: 11,
+                                          fontWeight: FontWeight.w500,
+                                          color: mutedCol,
+                                        ),
+                                      ),
+                                      const SizedBox(height: 2),
+                                      Text(
+                                        _revealTransactionPin
+                                            ? currentEntry.transactionPin
+                                            : _formatMaskedPin(currentEntry.transactionPin),
+                                        style: const TextStyle(
+                                          fontFamily: 'JetBrains Mono',
+                                          fontSize: 15,
+                                          fontWeight: FontWeight.w600,
+                                          letterSpacing: 2,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                                IconButton(
+                                  icon: const Icon(Icons.dialpad_rounded, size: 18),
+                                  tooltip: 'Keypad',
+                                  onPressed: () {
+                                    HapticFeedback.lightImpact();
+                                    showModalBottomSheet<void>(
+                                      context: context,
+                                      isScrollControlled: true,
+                                      backgroundColor: Colors.transparent,
+                                      builder: (ctx) => ScrambledPinKeypad(
+                                        title: 'UPI PIN',
+                                        pin: currentEntry.transactionPin,
+                                      ),
+                                    );
+                                  },
+                                ),
+                                IconButton(
+                                  icon: Icon(
+                                    _revealTransactionPin
+                                        ? Icons.visibility_off_rounded
+                                        : Icons.visibility_rounded,
+                                    size: 18,
+                                  ),
+                                  tooltip: _revealTransactionPin ? 'Mask UPI PIN' : 'Show UPI PIN',
+                                  onPressed: () {
+                                    setState(() => _revealTransactionPin = !_revealTransactionPin);
+                                  },
+                                ),
+                                IconButton(
+                                  icon: const Icon(Icons.copy_rounded, size: 18),
+                                  tooltip: 'Copy UPI PIN',
+                                  onPressed: () => _copyToClipboard(currentEntry.transactionPin, 'UPI PIN'),
+                                ),
+                              ],
+                            ),
+                          ),
+                          if (_revealTransactionPin && currentEntry.transactionPin.isNotEmpty) ...[
+                            Padding(
+                              padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
+                              child: CharacterIndexerChips(
+                                secret: currentEntry.transactionPin,
+                                isRevealed: true,
+                                label: 'UPI PIN Character Position Index',
+                              ),
+                            ),
+                          ],
+                        ],
+                      ],
+                    ),
+                  ),
+
+                  // Custom Secure Fields Group
+                  if (currentEntry.hasCustomFields) ...[
+                    const SizedBox(height: 14),
+                    Container(
+                      decoration: BoxDecoration(
+                        color: inputBg,
+                        borderRadius: BorderRadius.circular(16),
+                        border: Border.all(color: borderCol),
+                      ),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.stretch,
+                        children: [
+                          Padding(
+                            padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
+                            child: Row(
+                              children: [
+                                const Icon(Icons.shield_outlined, size: 16, color: AppColors.primaryBlue),
                                 const SizedBox(width: 8),
                                 Text(
-                                  'Security: $strengthLabel',
+                                  'Custom Secure Fields',
                                   style: TextStyle(
                                     fontSize: 12,
-                                    fontWeight: FontWeight.w600,
-                                    color: strengthColor,
+                                    fontWeight: FontWeight.w700,
+                                    letterSpacing: 0.5,
+                                    color: mutedCol,
                                   ),
                                 ),
                               ],
                             ),
                           ),
+                          ...List.generate(currentEntry.customFields.length, (idx) {
+                            final field = currentEntry.customFields[idx];
+                            final isRevealed =
+                                !field.isConcealed || _revealedCustomFieldIds.contains(field.id);
+                            return Column(
+                              crossAxisAlignment: CrossAxisAlignment.stretch,
+                              children: [
+                                Divider(height: 1, indent: 16, endIndent: 16, color: borderCol.withAlpha(80)),
+                                Padding(
+                                  padding: const EdgeInsets.fromLTRB(16, 12, 10, 12),
+                                  child: Row(
+                                    children: [
+                                      Expanded(
+                                        child: Column(
+                                          crossAxisAlignment: CrossAxisAlignment.start,
+                                          children: [
+                                            Text(
+                                              field.label,
+                                              style: TextStyle(
+                                                fontSize: 11,
+                                                fontWeight: FontWeight.w500,
+                                                color: mutedCol,
+                                              ),
+                                            ),
+                                            const SizedBox(height: 2),
+                                            Text(
+                                              isRevealed
+                                                  ? field.value
+                                                  : ('● ' * field.value.length.clamp(4, 16)).trim(),
+                                              style: TextStyle(
+                                                fontFamily: 'JetBrains Mono',
+                                                fontSize: 15,
+                                                fontWeight: FontWeight.w600,
+                                                letterSpacing: isRevealed ? 0.5 : 2,
+                                              ),
+                                            ),
+                                          ],
+                                        ),
+                                      ),
+                                      if (field.isConcealed)
+                                        IconButton(
+                                          icon: Icon(
+                                            isRevealed ? Icons.visibility_off_rounded : Icons.visibility_rounded,
+                                            size: 18,
+                                          ),
+                                          tooltip: isRevealed ? 'Mask field' : 'Show field',
+                                          onPressed: () {
+                                            setState(() {
+                                              if (_revealedCustomFieldIds.contains(field.id)) {
+                                                _revealedCustomFieldIds.remove(field.id);
+                                              } else {
+                                                _revealedCustomFieldIds.add(field.id);
+                                              }
+                                            });
+                                          },
+                                        ),
+                                      IconButton(
+                                        icon: const Icon(Icons.copy_rounded, size: 18),
+                                        tooltip: 'Copy ${field.label}',
+                                        onPressed: () => _copyToClipboard(field.value, field.label),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                                if (isRevealed && field.value.length >= 2) ...[
+                                  Padding(
+                                    padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
+                                    child: CharacterIndexerChips(
+                                      secret: field.value,
+                                      isRevealed: true,
+                                      label: '${field.label} Character Index',
+                                    ),
+                                  ),
+                                ],
+                              ],
+                            );
+                          }),
                         ],
-                      ],
+                      ),
                     ),
-                  ),
+                  ],
 
                   // Group 2: Details & Notes (Inset Grouped Card)
                   const SizedBox(height: 14),

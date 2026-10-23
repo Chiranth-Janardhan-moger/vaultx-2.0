@@ -35,6 +35,7 @@ class VaultXApp extends ConsumerWidget {
 
     return MaterialApp(
       title: 'VaultX 2.0',
+      navigatorKey: AppGlobals.navigatorKey,
       scaffoldMessengerKey: AppGlobals.scaffoldMessengerKey,
       debugShowCheckedModeBanner: false,
       theme: AppTheme.lightTheme,
