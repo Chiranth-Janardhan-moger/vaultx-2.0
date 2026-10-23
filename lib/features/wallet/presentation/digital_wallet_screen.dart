@@ -7,7 +7,6 @@ import 'package:vaultx/core/widgets/physical_card_widget.dart';
 import 'package:vaultx/features/wallet/domain/wallet_card_entry.dart';
 import 'package:vaultx/features/wallet/presentation/providers/wallet_cards_provider.dart';
 import 'package:vaultx/features/wallet/presentation/add_card_screen.dart';
-import 'package:vaultx/features/wallet/presentation/card_scanner/card_scanner_screen.dart';
 
 /// Screen 6: Digital Wallet Screen
 ///
@@ -58,15 +57,6 @@ class _DigitalWalletScreenState extends ConsumerState<DigitalWalletScreen> {
     );
   }
 
-  void _navigateToScanCard() {
-    HapticFeedback.lightImpact();
-    Navigator.of(context).push(
-      MaterialPageRoute<void>(
-        builder: (_) => const CardScannerScreen(),
-      ),
-    );
-  }
-
   void _showCardDetails(WalletCardEntry card) {
     HapticFeedback.lightImpact();
     showModalBottomSheet<void>(
@@ -112,30 +102,15 @@ class _DigitalWalletScreenState extends ConsumerState<DigitalWalletScreen> {
                         letterSpacing: -0.5,
                       ),
                     ),
-                    Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        IconButton.outlined(
-                          onPressed: _navigateToScanCard,
-                          style: IconButton.styleFrom(
-                            side: BorderSide(color: borderCol),
-                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
-                          ),
-                          icon: const Icon(Icons.document_scanner_rounded, size: 20),
-                          tooltip: 'Scan Card',
-                        ),
-                        const SizedBox(width: 8),
-                        IconButton.filled(
-                          onPressed: () => _navigateToAddCard(),
-                          style: IconButton.styleFrom(
-                            backgroundColor: AppColors.primaryBlue,
-                            foregroundColor: Colors.white,
-                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
-                          ),
-                          icon: const Icon(Icons.add_rounded, size: 22),
-                          tooltip: 'Add Card',
-                        ),
-                      ],
+                    IconButton.filled(
+                      onPressed: () => _navigateToAddCard(),
+                      style: IconButton.styleFrom(
+                        backgroundColor: AppColors.primaryBlue,
+                        foregroundColor: Colors.white,
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                      ),
+                      icon: const Icon(Icons.add_rounded, size: 22),
+                      tooltip: 'Add Card',
                     ),
                   ],
                 ),

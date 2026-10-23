@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:vaultx/core/theme/app_theme.dart';
 import 'package:vaultx/core/theme/happy_feedback.dart';
+import 'package:vaultx/features/wallet/domain/card_validator.dart';
 import 'package:vaultx/features/wallet/domain/wallet_card_entry.dart';
 import 'package:vaultx/features/wallet/presentation/providers/wallet_cards_provider.dart';
 
@@ -72,15 +73,25 @@ class _AddCardScreenState extends ConsumerState<AddCardScreen> {
   }
 
   void _formatCardNumber(String value) {
-    final clean = value.replaceAll(RegExp(r'\s+'), '');
-    final buffer = StringBuffer();
-    for (int i = 0; i < clean.length; i++) {
-      if (i > 0 && i % 4 == 0) buffer.write(' ');
-      buffer.write(clean[i]);
+    final formatted = CardValidator.formatCardNumber(value);
+    final detected = CardValidator.detectNetwork(value);
+    if (detected != _selectedNetwork && CardValidator.supportedNetworks.contains(detected)) {
+      setState(() => _selectedNetwork = detected);
     }
-    final formatted = buffer.toString();
     if (formatted != value) {
       _numberController.value = TextEditingValue(
+        text: formatted,
+        selection: TextSelection.collapsed(offset: formatted.length),
+      );
+    } else {
+      setState(() {});
+    }
+  }
+
+  void _formatExpiry(String value) {
+    final formatted = CardValidator.formatExpiry(value);
+    if (formatted != value) {
+      _expiryController.value = TextEditingValue(
         text: formatted,
         selection: TextSelection.collapsed(offset: formatted.length),
       );
@@ -256,15 +267,25 @@ class _AddCardScreenState extends ConsumerState<AddCardScreen> {
                         labelText: 'Card Number',
                         hintText: '0000 0000 0000 0000',
                         prefixIcon: const Icon(Icons.pin_outlined, size: 20),
-                        suffixIcon: IconButton(
-                          icon: const Icon(Icons.paste_rounded, size: 18),
-                          tooltip: 'Paste from clipboard',
-                          onPressed: () async {
-                            final data = await Clipboard.getData('text/plain');
-                            if (data?.text != null) {
-                              _formatCardNumber(data!.text!);
-                            }
-                          },
+                        suffixIcon: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            if (CardValidator.passesLuhn(_numberController.text))
+                              const Padding(
+                                padding: EdgeInsets.only(right: 6),
+                                child: Icon(Icons.check_circle_rounded, color: AppColors.emerald500, size: 18),
+                              ),
+                            IconButton(
+                              icon: const Icon(Icons.paste_rounded, size: 18),
+                              tooltip: 'Paste from clipboard',
+                              onPressed: () async {
+                                final data = await Clipboard.getData('text/plain');
+                                if (data?.text != null) {
+                                  _formatCardNumber(data!.text!);
+                                }
+                              },
+                            ),
+                          ],
                         ),
                         border: InputBorder.none,
                         contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
@@ -279,6 +300,7 @@ class _AddCardScreenState extends ConsumerState<AddCardScreen> {
                           child: TextField(
                             controller: _expiryController,
                             keyboardType: TextInputType.datetime,
+                            onChanged: _formatExpiry,
                             style: const TextStyle(fontFamily: 'JetBrains Mono'),
                             decoration: const InputDecoration(
                               labelText: 'Expiry Date',
