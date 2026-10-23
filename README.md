@@ -1,8 +1,8 @@
-# VaultX
+# VaultX 2.0
 
 > **Your mind, secured.** — A local-first, offline-capable password and card vault.
 
-[![CI Matrix](https://github.com/navya24shree/VaultX/actions/workflows/ci.yml/badge.svg)](https://github.com/navya24shree/VaultX/actions/workflows/ci.yml)
+[![CI Matrix](https://github.com/Chiranth-Janardhan-moger/vaultx-2.0/actions/workflows/ci.yml/badge.svg)](https://github.com/Chiranth-Janardhan-moger/vaultx-2.0/actions/workflows/ci.yml)
 [![Flutter](https://img.shields.io/badge/Flutter-stable-blue?logo=flutter)](https://flutter.dev)
 [![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
 
@@ -10,16 +10,16 @@
 
 ## What is VaultX?
 
-VaultX is an open-source, cross-platform **password manager and digital wallet** built with Flutter. It targets Android, iOS, Windows, and macOS from a single codebase.
+VaultX 2.0 is an open-source, cross-platform **password manager and digital wallet** built with Flutter. It targets Android, iOS, Windows, and macOS from a single codebase.
 
 **Core guarantees:**
 
-- ?? Vault data is **AES-256-GCM encrypted at rest** — every entry individually, with a unique nonce per write.
-- ?? The master key is derived via **Argon2id** from your master password — GPU-resistant, never stored in plaintext.
-- ?? Master key lives **only in the platform secure enclave** (iOS/macOS Keychain, Android Keystore, Windows DPAPI).
-- ?? **Biometric unlock** (Face ID / Touch ID / fingerprint) gates key retrieval.
-- ?? **No cloud. No server. Zero knowledge.** Your data never leaves your devices in plaintext — including during sync.
-- ?? **Device-to-device sync** over local Wi-Fi (mDNS) with WSS/443 relay fallback — all traffic encrypted end-to-end via X25519 ECDH + AES-256-GCM.
+- Vault data is **AES-256-GCM encrypted at rest** — every entry individually, with a unique nonce per write.
+- The master key is derived via **Argon2id** from your master password — GPU-resistant, never stored in plaintext.
+- Master key lives **only in the platform secure enclave** (iOS/macOS Keychain, Android Keystore, Windows DPAPI).
+- **Biometric unlock** (Face ID / Touch ID / fingerprint) gates key retrieval.
+- **No cloud. No server. Zero knowledge.** Your data never leaves your devices in plaintext — including during sync.
+- **Device-to-device sync** over local Wi-Fi with QR rendezvous — all traffic encrypted end-to-end via X25519 ECDH + AES-256-GCM.
 
 ---
 
@@ -117,8 +117,8 @@ No cloud-assisted recovery exists by design. During onboarding, a cryptographica
 
 ```bash
 # Clone the repository
-git clone https://github.com/navya24shree/VaultX.git
-cd VaultX
+git clone https://github.com/Chiranth-Janardhan-moger/vaultx-2.0.git
+cd vaultx-2.0
 
 # Install Flutter dependencies
 flutter pub get
@@ -218,10 +218,16 @@ This project follows strict security-first development practices. Key rules:
 
 ---
 
+## Contributors
+
+Special thanks to [navyashree](https://github.com/navya24shree) for contributions and collaboration on VaultX.
+
+---
+
 ## License
 
 MIT License — see [LICENSE](LICENSE) for details.
 
 ---
 
-*VaultX — Built with ?? security-first principles.*
+*VaultX 2.0 — Built with security-first principles.*
