@@ -19,6 +19,7 @@ class VaultStorageService {
   static const String _passwordsFile = 'vaultx_passwords.enc';
   static const String _cardsFile = 'vaultx_cards.enc';
   static const String _categoriesFile = 'vaultx_categories.json';
+  static const String _deletedCategoriesFile = 'vaultx_deleted_categories.json';
 
   final VaultCipher _cipher;
   final Directory? overrideDir;
@@ -303,6 +304,34 @@ class VaultStorageService {
     }
   }
 
+  Future<List<String>> loadDeletedCategories() async {
+    try {
+      final file = await _getFile(_deletedCategoriesFile);
+      if (!await file.exists()) return [];
+
+      final content = await file.readAsString();
+      if (content.trim().isEmpty) return [];
+
+      final decoded = jsonDecode(content);
+      if (decoded is List) {
+        return decoded.map((e) => e.toString()).toList();
+      }
+      return [];
+    } catch (e) {
+      debugPrint('VaultStorageService.loadDeletedCategories error: $e');
+      return [];
+    }
+  }
+
+  Future<void> saveDeletedCategories(List<String> categories) async {
+    try {
+      final file = await _getFile(_deletedCategoriesFile);
+      await file.writeAsString(jsonEncode(categories), flush: true);
+    } catch (e) {
+      debugPrint('VaultStorageService.saveDeletedCategories error: $e');
+    }
+  }
+
   // ==========================================
   // RE-ENCRYPT & WIPE
   // ==========================================
@@ -334,6 +363,9 @@ class VaultStorageService {
 
       final catFile = await _getFile(_categoriesFile);
       if (await catFile.exists()) await catFile.delete();
+
+      final delCatFile = await _getFile(_deletedCategoriesFile);
+      if (await delCatFile.exists()) await delCatFile.delete();
     } catch (e) {
       debugPrint('VaultStorageService.wipeAll error: $e');
     }

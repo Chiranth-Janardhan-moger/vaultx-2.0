@@ -27,6 +27,7 @@ class _EditPasswordScreenState extends ConsumerState<EditPasswordScreen> {
   late TextEditingController _passwordController;
   late TextEditingController _websiteController;
   late TextEditingController _notesController;
+  late String _selectedCategory;
 
   @override
   void initState() {
@@ -36,6 +37,14 @@ class _EditPasswordScreenState extends ConsumerState<EditPasswordScreen> {
     _passwordController = TextEditingController(text: widget.entry.password);
     _websiteController = TextEditingController(text: widget.entry.websiteUrl);
     _notesController = TextEditingController(text: widget.entry.notes);
+    _selectedCategory = widget.entry.category;
+  }
+
+  void _openAddCategory() async {
+    final newCat = await showAddCategoryDialog(context, ref);
+    if (newCat != null && mounted) {
+      setState(() => _selectedCategory = newCat);
+    }
   }
 
   @override
@@ -61,6 +70,7 @@ class _EditPasswordScreenState extends ConsumerState<EditPasswordScreen> {
       title: newTitle,
       username: _usernameController.text.trim(),
       password: _passwordController.text.trim(),
+      category: widget.entry.isSecureNote ? 'Notes' : _selectedCategory,
       totpSecret: widget.entry.totpSecret,
       websiteUrl: _websiteController.text.trim(),
       notes: _notesController.text.trim(),
@@ -123,26 +133,37 @@ class _EditPasswordScreenState extends ConsumerState<EditPasswordScreen> {
           (e) => e.id == widget.entry.id,
           orElse: () => widget.entry,
         );
+    final categories = [
+      for (final c in ref.watch(vaultPasswordsProvider).allCategories)
+        if (c.toLowerCase() != 'all') c
+    ];
 
     return Scaffold(
       appBar: AppBar(
+        leading: TextButton(
+          onPressed: () => Navigator.of(context).pop(),
+          style: TextButton.styleFrom(
+            padding: const EdgeInsets.symmetric(horizontal: 12),
+            overlayColor: AppColors.primaryBlue.withAlpha(25),
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+          ),
+          child: const Text(
+            'Cancel',
+            maxLines: 1,
+            softWrap: false,
+            style: TextStyle(
+              color: AppColors.primaryBlue,
+              fontSize: 16,
+              fontWeight: FontWeight.w400,
+            ),
+          ),
+        ),
+        leadingWidth: 84,
         title: Text(
           isNote ? 'Edit Secure Note' : 'Edit Credential',
           style: const TextStyle(fontSize: 17, fontWeight: FontWeight.w700),
         ),
-        leading: IconButton(
-          icon: Container(
-            width: 36,
-            height: 36,
-            decoration: BoxDecoration(
-              color: cardBg,
-              shape: BoxShape.circle,
-              border: Border.all(color: borderCol),
-            ),
-            child: const Icon(Icons.close_rounded, size: 18),
-          ),
-          onPressed: () => Navigator.of(context).pop(),
-        ),
+        centerTitle: true,
         actions: [
           IconButton(
             icon: Icon(
@@ -151,6 +172,7 @@ class _EditPasswordScreenState extends ConsumerState<EditPasswordScreen> {
               size: 22,
             ),
             tooltip: currentEntry.isFavorite ? 'Remove from favorites' : 'Add to favorites',
+            splashRadius: 20,
             onPressed: () {
               HapticFeedback.selectionClick();
               ref.read(vaultPasswordsProvider.notifier).toggleFavorite(currentEntry.id);
@@ -158,15 +180,23 @@ class _EditPasswordScreenState extends ConsumerState<EditPasswordScreen> {
           ),
           TextButton(
             onPressed: _saveAndClose,
+            style: TextButton.styleFrom(
+              padding: const EdgeInsets.symmetric(horizontal: 12),
+              overlayColor: AppColors.primaryBlue.withAlpha(25),
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+            ),
             child: const Text(
               'Done',
+              maxLines: 1,
+              softWrap: false,
               style: TextStyle(
                 color: AppColors.primaryBlue,
                 fontSize: 16,
-                fontWeight: FontWeight.w700,
+                fontWeight: FontWeight.w400,
               ),
             ),
           ),
+          const SizedBox(width: 4),
         ],
       ),
       body: SafeArea(
@@ -322,64 +352,94 @@ class _EditPasswordScreenState extends ConsumerState<EditPasswordScreen> {
                 const SizedBox(height: 18),
               ],
 
-              // Security & Protection Badge
-              Container(
-                padding: const EdgeInsets.all(16),
-                decoration: BoxDecoration(
-                  color: isDark
-                      ? AppColors.emerald950.withAlpha(120)
-                      : AppColors.emerald500.withAlpha(24),
-                  borderRadius: BorderRadius.circular(20),
-                  border: Border.all(
-                    color: AppColors.emerald500.withAlpha(isDark ? 160 : 180),
+              // Category Selector (only for Logins)
+              if (!isNote) ...[
+                Text(
+                  'CATEGORY',
+                  style: TextStyle(
+                    fontSize: 11,
+                    fontWeight: FontWeight.w700,
+                    letterSpacing: 1.0,
+                    color: isDark ? AppColors.darkTextMuted : AppColors.lightTextMuted,
                   ),
                 ),
-                child: Row(
-                  children: [
-                    Container(
-                      padding: const EdgeInsets.all(8),
-                      decoration: BoxDecoration(
-                        color: AppColors.emerald500.withAlpha(40),
-                        shape: BoxShape.circle,
-                      ),
-                      child: const Icon(
-                        Icons.security_rounded,
-                        color: AppColors.emerald400,
-                        size: 22,
-                      ),
-                    ),
-                    const SizedBox(width: 14),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          const Text(
-                            'Safe & Secure',
-                            style: TextStyle(
-                              color: AppColors.emerald400,
-                              fontSize: 15,
-                              fontWeight: FontWeight.w700,
+                const SizedBox(height: 10),
+                SizedBox(
+                  height: 40,
+                  child: ListView.separated(
+                    scrollDirection: Axis.horizontal,
+                    itemCount: categories.length + 1,
+                    separatorBuilder: (_, __) => const SizedBox(width: 8),
+                    itemBuilder: (context, index) {
+                      if (index == categories.length) {
+                        return ActionChip(
+                          avatar: const Icon(
+                            Icons.add_rounded,
+                            size: 16,
+                            color: AppColors.primaryBlue,
+                          ),
+                          label: const Text('+ Add'),
+                          backgroundColor: cardBg,
+                          labelStyle: const TextStyle(
+                            fontSize: 13,
+                            fontWeight: FontWeight.w700,
+                            color: AppColors.primaryBlue,
+                          ),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(20),
+                            side: BorderSide(
+                              color: AppColors.primaryBlue.withAlpha(140),
+                              width: 1.2,
                             ),
                           ),
-                          const SizedBox(height: 2),
-                          Text(
-                            'Protected with zero-knowledge AES-256-GCM encryption.',
-                            style: TextStyle(
-                              color: isDark ? AppColors.darkTextMuted : AppColors.lightTextMuted,
-                              fontSize: 13,
-                            ),
+                          onPressed: _openAddCategory,
+                        );
+                      }
+
+                      final cat = categories[index];
+                      final isSelected = _selectedCategory.toLowerCase() == cat.toLowerCase();
+                      final catColor = getCategoryColor(cat);
+                      return ChoiceChip(
+                        avatar: isSelected
+                            ? null
+                            : Container(
+                                width: 8,
+                                height: 8,
+                                decoration: BoxDecoration(
+                                  color: catColor,
+                                  shape: BoxShape.circle,
+                                ),
+                              ),
+                        label: Text(cat),
+                        selected: isSelected,
+                        onSelected: (val) {
+                          if (val) setState(() => _selectedCategory = cat);
+                        },
+                        selectedColor: AppColors.primaryBlue,
+                        backgroundColor: cardBg,
+                        labelStyle: TextStyle(
+                          fontSize: 13,
+                          fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
+                          color: isSelected
+                              ? Colors.white
+                              : (isDark ? AppColors.darkTextPrimary : AppColors.lightTextPrimary),
+                        ),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(20),
+                          side: BorderSide(
+                            color: isSelected ? AppColors.primaryBlue : borderCol,
                           ),
-                        ],
-                      ),
-                    ),
-                  ],
+                        ),
+                      );
+                    },
+                  ),
                 ),
-              ),
-              const SizedBox(height: 18),
+                const SizedBox(height: 18),
+              ],
 
               // Details Group
               Text(
-                isNote ? 'SECURE NOTE CONTENT' : 'ADDITIONAL DETAILS',
+                isNote ? 'CONTENT' : 'DETAILS',
                 style: TextStyle(
                   fontSize: 11,
                   fontWeight: FontWeight.w700,

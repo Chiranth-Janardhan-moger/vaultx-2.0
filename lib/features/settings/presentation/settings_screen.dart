@@ -3,7 +3,6 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:vaultx/core/theme/app_theme.dart';
 import 'package:vaultx/core/theme/theme_provider.dart';
-import 'package:vaultx/core/widgets/expressive/expressive.dart';
 import 'package:vaultx/core/services/clipboard_security_service.dart';
 import 'package:vaultx/core/services/screen_security_service.dart';
 import 'package:vaultx/features/auth/presentation/providers/auth_session_provider.dart';
@@ -12,6 +11,7 @@ import 'package:vaultx/features/settings/presentation/providers/auto_lock_provid
 import 'package:vaultx/features/settings/presentation/providers/biometric_preference_provider.dart';
 import 'package:vaultx/features/sync/presentation/sync_screen.dart';
 import 'package:vaultx/features/backup/presentation/backup_restore_screen.dart';
+import 'package:vaultx/features/vault/presentation/providers/vault_passwords_provider.dart';
 
 /// Opens the irreversible cryptographic wipe confirmation dialog.
 void confirmWipeData(BuildContext context, WidgetRef ref) {
@@ -268,6 +268,123 @@ void openClipboardTimeoutDialog(BuildContext context, WidgetRef ref) {
   );
 }
 
+/// Opens the modal selector for Vault sorting preferences.
+void openVaultSortDialog(BuildContext context, WidgetRef ref) {
+  HapticFeedback.lightImpact();
+  showDialog<void>(
+    context: context,
+    builder: (ctx) {
+      return Consumer(
+        builder: (context, ref, _) {
+          final current = ref.watch(vaultPasswordsProvider).activeSortOption;
+          final isDark = Theme.of(context).brightness == Brightness.dark;
+          final dialogBg = isDark ? AppColors.darkCardSurface : AppColors.lightCardSurface;
+          final borderCol = isDark ? AppColors.darkBorder : AppColors.lightBorder;
+
+          return Dialog(
+            backgroundColor: dialogBg,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(24),
+              side: BorderSide(color: borderCol),
+            ),
+            child: Padding(
+              padding: const EdgeInsets.all(24),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      const Text(
+                        'Vault Sorting',
+                        style: TextStyle(fontSize: 18, fontWeight: FontWeight.w700),
+                      ),
+                      IconButton(
+                        icon: const Icon(Icons.close_rounded, size: 20),
+                        onPressed: () => Navigator.of(ctx).pop(),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 6),
+                  Text(
+                    'Choose default ordering for credentials',
+                    style: TextStyle(
+                      fontSize: 13,
+                      color: isDark ? AppColors.darkTextMuted : AppColors.lightTextMuted,
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                  ...VaultSortOption.values.map((option) {
+                    final isSelected = current == option;
+                    return Padding(
+                      padding: const EdgeInsets.only(bottom: 8),
+                      child: InkWell(
+                        borderRadius: BorderRadius.circular(14),
+                        onTap: () {
+                          HapticFeedback.selectionClick();
+                          ref.read(vaultPasswordsProvider.notifier).setSortOption(option);
+                          Navigator.of(ctx).pop();
+                        },
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                          decoration: BoxDecoration(
+                            color: isSelected
+                                ? AppColors.primaryBlue.withAlpha(isDark ? 50 : 30)
+                                : (isDark ? AppColors.darkInputSurface : AppColors.lightInputSurface),
+                            borderRadius: BorderRadius.circular(14),
+                            border: Border.all(
+                              color: isSelected ? AppColors.primaryBlue : borderCol,
+                              width: isSelected ? 1.5 : 1.0,
+                            ),
+                          ),
+                          child: Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: [
+                              Row(
+                                children: [
+                                  Icon(
+                                    option.icon,
+                                    size: 18,
+                                    color: isSelected
+                                        ? AppColors.primaryBlue
+                                        : (isDark ? AppColors.darkTextMuted : AppColors.lightTextMuted),
+                                  ),
+                                  const SizedBox(width: 12),
+                                  Text(
+                                    option.label,
+                                    style: TextStyle(
+                                      fontSize: 15,
+                                      fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
+                                      color: isSelected
+                                          ? AppColors.primaryBlue
+                                          : (isDark ? Colors.white : Colors.black87),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                              if (isSelected)
+                                const Icon(
+                                  Icons.check_circle_rounded,
+                                  color: AppColors.primaryBlue,
+                                  size: 20,
+                                ),
+                            ],
+                          ),
+                        ),
+                      ),
+                    );
+                  }),
+                ],
+              ),
+            ),
+          );
+        },
+      );
+    },
+  );
+}
+
 /// Screen 8: Settings Hub Screen
 ///
 /// Compact, clear settings directory divided into General, Sync, Backup & Restore,
@@ -385,6 +502,7 @@ class GeneralSettingsScreen extends ConsumerWidget {
     final authState = ref.watch(authSessionProvider);
     final screenSecurity = ref.watch(screenSecurityProvider);
     final clipboardTimeout = ref.watch(clipboardTimeoutProvider);
+    final vaultSortOption = ref.watch(vaultPasswordsProvider).activeSortOption;
 
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final cardBg = isDark ? AppColors.darkCardSurface : AppColors.lightCardSurface;
@@ -437,44 +555,63 @@ class GeneralSettingsScreen extends ConsumerWidget {
                       ],
                     ),
                     const SizedBox(height: 14),
-                    ExpressiveSegmentedButton<ThemeMode>(
-                      items: const [
-                        ThemeMode.system,
-                        ThemeMode.dark,
-                        ThemeMode.light,
+                    SegmentedButton<ThemeMode>(
+                      segments: const [
+                        ButtonSegment<ThemeMode>(
+                          value: ThemeMode.system,
+                          icon: Icon(Icons.brightness_auto_rounded, size: 16),
+                          label: Text('System'),
+                        ),
+                        ButtonSegment<ThemeMode>(
+                          value: ThemeMode.dark,
+                          icon: Icon(Icons.dark_mode_rounded, size: 16),
+                          label: Text('Dark'),
+                        ),
+                        ButtonSegment<ThemeMode>(
+                          value: ThemeMode.light,
+                          icon: Icon(Icons.light_mode_rounded, size: 16),
+                          label: Text('Light'),
+                        ),
                       ],
-                      selectedItem: themeMode,
-                      onSelected: (mode) {
+                      selected: {themeMode},
+                      onSelectionChanged: (set) {
                         HapticFeedback.selectionClick();
-                        ref.read(themeModeProvider.notifier).setMode(mode);
-                      },
-                      itemBuilder: (context, mode, isSelected) {
-                        final (icon, label) = switch (mode) {
-                          ThemeMode.system => (Icons.brightness_auto_rounded, 'System'),
-                          ThemeMode.dark => (Icons.dark_mode_rounded, 'Dark'),
-                          ThemeMode.light => (Icons.light_mode_rounded, 'Light'),
-                        };
-                        final color = isSelected
-                            ? AppColors.primaryBlue
-                            : Theme.of(context).colorScheme.onSurfaceVariant;
-                        return Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            Icon(icon, size: 16, color: color),
-                            const SizedBox(width: 6),
-                            Text(
-                              label,
-                              style: TextStyle(
-                                fontSize: 13,
-                                fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
-                                color: color,
-                              ),
-                            ),
-                          ],
-                        );
+                        ref.read(themeModeProvider.notifier).setMode(set.first);
                       },
                     ),
                   ],
+                ),
+              ),
+              const SizedBox(height: 24),
+
+              // SECTION: VAULT PREFERENCES
+              const _SectionHeader(title: 'VAULT PREFERENCES'),
+              Material(
+                color: cardBg,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(20),
+                  side: BorderSide(color: borderCol),
+                ),
+                clipBehavior: Clip.antiAlias,
+                child: ListTile(
+                  leading: const Icon(Icons.swap_vert_rounded, color: AppColors.primaryBlue),
+                  title: const Text('Vault Sorting', style: TextStyle(fontWeight: FontWeight.w600)),
+                  subtitle: const Text('Default ordering for passwords and accounts'),
+                  trailing: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text(
+                        vaultSortOption.label,
+                        style: TextStyle(
+                          color: mutedCol,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                      const SizedBox(width: 4),
+                      const Icon(Icons.chevron_right_rounded, size: 20),
+                    ],
+                  ),
+                  onTap: () => openVaultSortDialog(context, ref),
                 ),
               ),
               const SizedBox(height: 24),
@@ -734,13 +871,25 @@ class AppInfoScreen extends ConsumerWidget {
                       width: 48,
                       height: 48,
                       decoration: BoxDecoration(
-                        color: AppColors.primaryBlue.withAlpha(isDark ? 45 : 30),
-                        borderRadius: BorderRadius.circular(16),
+                        borderRadius: BorderRadius.circular(14),
                       ),
-                      child: const Icon(
-                        Icons.shield_rounded,
-                        color: AppColors.primaryBlue,
-                        size: 26,
+                      child: ClipRRect(
+                        borderRadius: BorderRadius.circular(14),
+                        child: Image.asset(
+                          'assets/images/icon.png',
+                          fit: BoxFit.cover,
+                          errorBuilder: (context, error, stackTrace) => Container(
+                            decoration: BoxDecoration(
+                              color: AppColors.primaryBlue.withAlpha(isDark ? 45 : 30),
+                              borderRadius: BorderRadius.circular(14),
+                            ),
+                            child: const Icon(
+                              Icons.shield_rounded,
+                              color: AppColors.primaryBlue,
+                              size: 26,
+                            ),
+                          ),
+                        ),
                       ),
                     ),
                     const SizedBox(width: 16),
@@ -749,7 +898,7 @@ class AppInfoScreen extends ConsumerWidget {
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           const Text(
-                            'VaultX',
+                            'VaultX 2.0',
                             style: TextStyle(
                               fontSize: 18,
                               fontWeight: FontWeight.w800,

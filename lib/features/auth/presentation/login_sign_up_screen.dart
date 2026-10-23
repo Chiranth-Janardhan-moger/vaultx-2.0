@@ -189,15 +189,10 @@ class _LoginSignUpScreenState extends ConsumerState<LoginSignUpScreen> {
                 children: [
                   // Hero Identity Logo
                   Container(
-                    width: 72,
-                    height: 72,
+                    width: 76,
+                    height: 76,
                     decoration: BoxDecoration(
-                      shape: BoxShape.circle,
-                      gradient: const LinearGradient(
-                        colors: [AppColors.primaryBlue, AppColors.brandPurple],
-                        begin: Alignment.topLeft,
-                        end: Alignment.bottomRight,
-                      ),
+                      borderRadius: BorderRadius.circular(20),
                       boxShadow: [
                         BoxShadow(
                           color: AppColors.primaryBlue.withAlpha(80),
@@ -206,10 +201,26 @@ class _LoginSignUpScreenState extends ConsumerState<LoginSignUpScreen> {
                         ),
                       ],
                     ),
-                    child: const Icon(
-                      Icons.lock_rounded,
-                      size: 38,
-                      color: Colors.white,
+                    child: ClipRRect(
+                      borderRadius: BorderRadius.circular(20),
+                      child: Image.asset(
+                        'assets/images/icon.png',
+                        fit: BoxFit.cover,
+                        errorBuilder: (context, error, stackTrace) => Container(
+                          decoration: const BoxDecoration(
+                            gradient: LinearGradient(
+                              colors: [AppColors.primaryBlue, AppColors.brandPurple],
+                              begin: Alignment.topLeft,
+                              end: Alignment.bottomRight,
+                            ),
+                          ),
+                          child: const Icon(
+                            Icons.lock_rounded,
+                            size: 38,
+                            color: Colors.white,
+                          ),
+                        ),
+                      ),
                     ),
                   ),
                   const SizedBox(height: 16),
@@ -220,7 +231,7 @@ class _LoginSignUpScreenState extends ConsumerState<LoginSignUpScreen> {
                       colors: [AppColors.primaryBlue, AppColors.brandPurple],
                     ).createShader(bounds),
                     child: const Text(
-                      'VaultX',
+                      'VaultX 2.0',
                       style: TextStyle(
                         fontSize: 32,
                         fontWeight: FontWeight.w800,

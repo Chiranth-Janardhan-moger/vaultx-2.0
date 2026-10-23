@@ -1,6 +1,6 @@
+import 'dart:io';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_riverpod/legacy.dart';
-import 'package:vaultx/features/sync/data/lan_discovery_service.dart';
 import 'package:vaultx/features/sync/data/sync_client.dart';
 import 'package:vaultx/features/sync/data/sync_server.dart';
 import 'package:vaultx/features/sync/domain/sync_protocol_models.dart';
@@ -59,14 +59,34 @@ class SyncOrchestrationState {
 class SyncOrchestratorNotifier extends StateNotifier<SyncOrchestrationState> {
   final Ref _ref;
   final VaultMergeEngine _mergeEngine = VaultMergeEngine();
-  final LanDiscoveryService _lanDiscovery = LanDiscoveryService();
 
   SyncServer? _server;
   SyncClient? _client;
 
   SyncOrchestratorNotifier(this._ref) : super(const SyncOrchestrationState());
 
-  /// Starts Host / Share Mode: Binds local WebSocket, advertises mDNS, and generates QR rendezvous.
+  static Future<List<String>> _getLocalIpAddresses() async {
+    final ips = <String>[];
+    try {
+      final interfaces = await NetworkInterface.list(
+        type: InternetAddressType.IPv4,
+        includeLinkLocal: false,
+      );
+      for (final iface in interfaces) {
+        for (final addr in iface.addresses) {
+          if (!addr.isLoopback) {
+            ips.add(addr.address);
+          }
+        }
+      }
+    } catch (_) {}
+    if (ips.isEmpty) {
+      ips.add('127.0.0.1');
+    }
+    return ips;
+  }
+
+  /// Starts Host / Share Mode: Binds local WebSocket, generates QR rendezvous.
   Future<void> startHostMode({String deviceName = 'VaultX Device'}) async {
     try {
       await cancel();
@@ -74,7 +94,7 @@ class SyncOrchestratorNotifier extends StateNotifier<SyncOrchestrationState> {
       const relayUrl = 'wss://relay.vaultx.org:443';
       _server = SyncServer(deviceName: deviceName);
       final port = await _server!.start();
-      final localIps = await LanDiscoveryService.getLocalIpAddresses();
+      final localIps = await _getLocalIpAddresses();
 
       final rendezvous = SyncRendezvousPayload(
         sessionId: _server!.sessionId!,
@@ -88,12 +108,6 @@ class SyncOrchestratorNotifier extends StateNotifier<SyncOrchestrationState> {
         role: SyncRole.host,
         status: SyncStatus.hosting,
         rendezvous: rendezvous,
-      );
-
-      // Start mDNS advertisement
-      await _lanDiscovery.startAdvertising(
-        deviceName: deviceName,
-        port: port,
       );
 
       // Listen to server status
@@ -212,8 +226,6 @@ class SyncOrchestratorNotifier extends StateNotifier<SyncOrchestrationState> {
 
   /// Cancels any active session, stops network servers, and resets state.
   Future<void> cancel() async {
-    await _lanDiscovery.stopAdvertising();
-    await _lanDiscovery.stopDiscovery();
     await _server?.stop();
     await _client?.disconnect();
     _server = null;
@@ -227,7 +239,6 @@ class SyncOrchestratorNotifier extends StateNotifier<SyncOrchestrationState> {
   void dispose() {
     _server?.stop();
     _client?.disconnect();
-    _lanDiscovery.dispose();
     super.dispose();
   }
 }

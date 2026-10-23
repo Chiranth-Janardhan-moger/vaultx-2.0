@@ -4,7 +4,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:vaultx/core/services/clipboard_security_service.dart';
 import 'package:vaultx/core/theme/app_theme.dart';
-import 'package:vaultx/core/widgets/expressive/expressive.dart';
+import 'package:vaultx/core/widgets/expressive/expressive_vertical_slider.dart';
 
 /// Screen 5: Password Generator Screen
 ///
@@ -213,22 +213,29 @@ class _PasswordGeneratorScreenState extends ConsumerState<PasswordGeneratorScree
                       // Actions: Regenerate & Copy
                       Row(
                         children: [
-                          ExpressiveIconButton.filled(
+                          IconButton.filledTonal(
                             onPressed: _regenerate,
-                            size: ExpressiveIconSize.large,
-                            color: inputBg,
-                            foregroundColor: AppColors.primaryBlue,
-                            enableSpringRotation: true,
+                            style: IconButton.styleFrom(
+                              backgroundColor: inputBg,
+                              foregroundColor: AppColors.primaryBlue,
+                              padding: const EdgeInsets.all(14),
+                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                            ),
                             icon: const Icon(Icons.refresh_rounded, size: 24),
                             tooltip: 'Regenerate',
                           ),
                           const SizedBox(width: 12),
                           Expanded(
-                            child: ExpressiveButton.filled(
+                            child: FilledButton.icon(
                               onPressed: _copyToClipboard,
-                              size: ExpressiveButtonSize.large,
+                              style: FilledButton.styleFrom(
+                                backgroundColor: AppColors.primaryBlue,
+                                foregroundColor: Colors.white,
+                                padding: const EdgeInsets.symmetric(vertical: 14),
+                                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                              ),
                               icon: const Icon(Icons.copy_rounded, size: 20),
-                              label: 'Copy',
+                              label: const Text('Copy', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700)),
                             ),
                           ),
                         ],

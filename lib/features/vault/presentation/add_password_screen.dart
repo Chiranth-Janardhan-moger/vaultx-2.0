@@ -3,7 +3,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:vaultx/core/theme/app_theme.dart';
-import 'package:vaultx/core/widgets/expressive/expressive.dart';
+import 'package:vaultx/core/theme/happy_feedback.dart';
+import 'package:vaultx/core/widgets/expressive/expressive_swipe_slider.dart';
 import 'package:vaultx/features/vault/domain/vault_password_entry.dart';
 import 'package:vaultx/features/vault/presentation/providers/vault_passwords_provider.dart';
 
@@ -27,65 +28,14 @@ class _AddPasswordScreenState extends ConsumerState<AddPasswordScreen> {
 
   bool _isSecureNote = false;
   bool _isFavorite = false;
-  String _selectedCategory = 'Email';
+  String _selectedCategory = 'Google';
   bool _obscurePassword = true;
 
-  void _showAddCategoryDialog() {
-    final textController = TextEditingController();
-    showDialog<void>(
-      context: context,
-      builder: (ctx) {
-        final isDark = Theme.of(ctx).brightness == Brightness.dark;
-        return AlertDialog(
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-          title: const Text(
-            'New Category',
-            style: TextStyle(fontWeight: FontWeight.w700, fontSize: 18),
-          ),
-          content: TextField(
-            controller: textController,
-            autofocus: true,
-            textCapitalization: TextCapitalization.words,
-            decoration: InputDecoration(
-              labelText: 'Category Name',
-              hintText: 'e.g. Work, Gaming, Crypto',
-              filled: true,
-              fillColor: isDark ? AppColors.darkInputSurface : AppColors.lightInputSurface,
-              border: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(14),
-              ),
-            ),
-            onSubmitted: (val) => _submitNewCategory(val, ctx),
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.of(ctx).pop(),
-              child: const Text('Cancel'),
-            ),
-            FilledButton(
-              onPressed: () => _submitNewCategory(textController.text, ctx),
-              style: FilledButton.styleFrom(
-                backgroundColor: AppColors.primaryBlue,
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-              ),
-              child: const Text('Add'),
-            ),
-          ],
-        );
-      },
-    );
-  }
-
-  void _submitNewCategory(String name, BuildContext dialogContext) {
-    final trimmed = name.trim();
-    if (trimmed.isEmpty) return;
-
-    ref.read(vaultPasswordsProvider.notifier).addCategory(trimmed);
-    setState(() {
-      _selectedCategory = trimmed;
-    });
-    HapticFeedback.mediumImpact();
-    Navigator.of(dialogContext).pop();
+  void _openAddCategory() async {
+    final newCat = await showAddCategoryDialog(context, ref);
+    if (newCat != null && mounted) {
+      setState(() => _selectedCategory = newCat);
+    }
   }
 
   @override
@@ -168,14 +118,19 @@ class _AddPasswordScreenState extends ConsumerState<AddPasswordScreen> {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final cardBg = isDark ? AppColors.darkCardSurface : AppColors.lightCardSurface;
     final borderCol = isDark ? AppColors.darkBorder : AppColors.lightBorder;
-    final categories = ref.watch(vaultPasswordsProvider).allCategories;
+    final categories = [
+      for (final c in ref.watch(vaultPasswordsProvider).allCategories)
+        if (c.toLowerCase() != 'all') c
+    ];
 
     return Scaffold(
       appBar: AppBar(
         leading: TextButton(
           onPressed: () => Navigator.of(context).pop(),
           style: TextButton.styleFrom(
-            padding: const EdgeInsets.symmetric(horizontal: 8),
+            padding: const EdgeInsets.symmetric(horizontal: 12),
+            overlayColor: AppColors.primaryBlue.withAlpha(25),
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
           ),
           child: const Text(
             'Cancel',
@@ -184,6 +139,7 @@ class _AddPasswordScreenState extends ConsumerState<AddPasswordScreen> {
             style: TextStyle(
               color: AppColors.primaryBlue,
               fontSize: 16,
+              fontWeight: FontWeight.w400,
             ),
           ),
         ),
@@ -200,22 +156,34 @@ class _AddPasswordScreenState extends ConsumerState<AddPasswordScreen> {
               color: _isFavorite
                   ? Colors.amber
                   : (isDark ? AppColors.darkTextMuted : AppColors.lightTextMuted),
-              size: 22,
+              size: 24,
             ),
             tooltip: _isFavorite ? 'Remove from favorites' : 'Mark as favorite',
+            splashRadius: 20,
             onPressed: () {
               HapticFeedback.selectionClick();
               setState(() => _isFavorite = !_isFavorite);
             },
           ),
-          Padding(
-            padding: const EdgeInsets.only(right: 12),
-            child: ExpressiveButton.filled(
-              onPressed: _save,
-              size: ExpressiveButtonSize.compact,
-              label: 'Save',
+          TextButton(
+            onPressed: _save,
+            style: TextButton.styleFrom(
+              padding: const EdgeInsets.symmetric(horizontal: 12),
+              overlayColor: AppColors.primaryBlue.withAlpha(25),
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+            ),
+            child: const Text(
+              'Save',
+              maxLines: 1,
+              softWrap: false,
+              style: TextStyle(
+                color: AppColors.primaryBlue,
+                fontSize: 16,
+                fontWeight: FontWeight.w400,
+              ),
             ),
           ),
+          const SizedBox(width: 4),
         ],
       ),
       body: SafeArea(
@@ -225,35 +193,21 @@ class _AddPasswordScreenState extends ConsumerState<AddPasswordScreen> {
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
               // Item Type Segmented Switcher
-              ExpressiveSegmentedButton<bool>(
-                items: const [false, true],
-                selectedItem: _isSecureNote,
-                onSelected: (val) {
+              SegmentedButton<bool>(
+                segments: const [
+                  ButtonSegment<bool>(
+                    value: false,
+                    label: Text('Login / Password', style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600)),
+                  ),
+                  ButtonSegment<bool>(
+                    value: true,
+                    label: Text('Secure Note', style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600)),
+                  ),
+                ],
+                selected: {_isSecureNote},
+                onSelectionChanged: (set) {
                   HapticFeedback.selectionClick();
-                  setState(() => _isSecureNote = val);
-                },
-                itemBuilder: (context, val, isSelected) {
-                  final (icon, label) = val
-                      ? (Icons.note_alt_outlined, 'Secure Note')
-                      : (Icons.password_rounded, 'Login / Password');
-                  final color = isSelected
-                      ? AppColors.primaryBlue
-                      : Theme.of(context).colorScheme.onSurfaceVariant;
-                  return Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Icon(icon, size: 16, color: color),
-                      const SizedBox(width: 6),
-                      Text(
-                        label,
-                        style: TextStyle(
-                          fontSize: 13,
-                          fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
-                          color: color,
-                        ),
-                      ),
-                    ],
-                  );
+                  setState(() => _isSecureNote = set.first);
                 },
               ),
               const SizedBox(height: 18),
@@ -261,7 +215,7 @@ class _AddPasswordScreenState extends ConsumerState<AddPasswordScreen> {
               // Category Selector (only for Logins)
               if (!_isSecureNote) ...[
                 Text(
-                  'CHOOSE CATEGORY',
+                  'CATEGORY',
                   style: TextStyle(
                     fontSize: 11,
                     fontWeight: FontWeight.w700,
@@ -277,14 +231,14 @@ class _AddPasswordScreenState extends ConsumerState<AddPasswordScreen> {
                     itemCount: categories.length + 1,
                     separatorBuilder: (_, __) => const SizedBox(width: 8),
                     itemBuilder: (context, index) {
-                      if (index == 0) {
+                      if (index == categories.length) {
                         return ActionChip(
                           avatar: const Icon(
                             Icons.add_rounded,
-                            size: 18,
+                            size: 16,
                             color: AppColors.primaryBlue,
                           ),
-                          label: const Text('Add Category'),
+                          label: const Text('+ Add'),
                           backgroundColor: cardBg,
                           labelStyle: const TextStyle(
                             fontSize: 13,
@@ -298,13 +252,24 @@ class _AddPasswordScreenState extends ConsumerState<AddPasswordScreen> {
                               width: 1.2,
                             ),
                           ),
-                          onPressed: _showAddCategoryDialog,
+                          onPressed: _openAddCategory,
                         );
                       }
 
-                      final cat = categories[index - 1];
+                      final cat = categories[index];
                       final isSelected = _selectedCategory.toLowerCase() == cat.toLowerCase();
+                      final catColor = getCategoryColor(cat);
                       return ChoiceChip(
+                        avatar: isSelected
+                            ? null
+                            : Container(
+                                width: 8,
+                                height: 8,
+                                decoration: BoxDecoration(
+                                  color: catColor,
+                                  shape: BoxShape.circle,
+                                ),
+                              ),
                         label: Text(cat),
                         selected: isSelected,
                         onSelected: (val) {
@@ -377,12 +342,13 @@ class _AddPasswordScreenState extends ConsumerState<AddPasswordScreen> {
                           labelText: 'Password',
                           hintText: 'Enter or swipe below to generate',
                           prefixIcon: const Icon(Icons.key_rounded, size: 20),
-                          suffixIcon: ExpressiveToggleIcon(
-                            isToggled: !_obscurePassword,
-                            firstIcon: Icons.visibility_off_rounded,
-                            secondIcon: Icons.visibility_rounded,
+                          suffixIcon: IconButton(
+                            icon: Icon(
+                              _obscurePassword ? Icons.visibility_off_rounded : Icons.visibility_rounded,
+                              size: 20,
+                            ),
                             tooltip: _obscurePassword ? 'Show password' : 'Hide password',
-                            onToggle: (val) => setState(() => _obscurePassword = !val),
+                            onPressed: () => setState(() => _obscurePassword = !_obscurePassword),
                           ),
                           filled: true,
                           fillColor: Colors.transparent,
@@ -403,52 +369,49 @@ class _AddPasswordScreenState extends ConsumerState<AddPasswordScreen> {
                   onTrigger: _generateRandomPassword,
                 ),
                 const SizedBox(height: 16),
-
-                // Website URL
-                Container(
-                  decoration: BoxDecoration(
-                    color: cardBg,
-                    borderRadius: BorderRadius.circular(20),
-                    border: Border.all(color: borderCol, width: 1),
-                  ),
-                  child: TextField(
-                    controller: _urlController,
-                    keyboardType: TextInputType.url,
-                    decoration: const InputDecoration(
-                      labelText: 'Website URL',
-                      hintText: 'https://...',
-                      prefixIcon: Icon(Icons.link_rounded, size: 20),
-                      filled: true,
-                      fillColor: Colors.transparent,
-                      border: InputBorder.none,
-                      contentPadding: EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-                    ),
-                  ),
-                ),
-                const SizedBox(height: 16),
               ],
 
-              // Notes Input (Expanded for Secure Notes)
+              // Merged Card: Website URL & Notes
               Container(
                 decoration: BoxDecoration(
                   color: cardBg,
                   borderRadius: BorderRadius.circular(20),
                   border: Border.all(color: borderCol, width: 1),
                 ),
-                child: TextField(
-                  controller: _notesController,
-                  maxLines: _isSecureNote ? 10 : 3,
-                  decoration: InputDecoration(
-                    labelText: _isSecureNote ? 'Encrypted Secure Note Content' : 'Notes',
-                    hintText: _isSecureNote
-                        ? 'Write secret keys, seed phrases, recovery backup codes, or confidential documents...'
-                        : 'Additional secure notes or recovery codes...',
-                    prefixIcon: const Icon(Icons.notes_rounded, size: 20),
-                    filled: true,
-                    fillColor: Colors.transparent,
-                    border: InputBorder.none,
-                    contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-                  ),
+                child: Column(
+                  children: [
+                    if (!_isSecureNote) ...[
+                      TextField(
+                        controller: _urlController,
+                        keyboardType: TextInputType.url,
+                        decoration: const InputDecoration(
+                          labelText: 'Website URL',
+                          hintText: 'https://...',
+                          prefixIcon: Icon(Icons.link_rounded, size: 20),
+                          filled: true,
+                          fillColor: Colors.transparent,
+                          border: InputBorder.none,
+                          contentPadding: EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                        ),
+                      ),
+                      Divider(height: 1, color: borderCol),
+                    ],
+                    TextField(
+                      controller: _notesController,
+                      maxLines: _isSecureNote ? 10 : 3,
+                      decoration: InputDecoration(
+                        labelText: _isSecureNote ? 'Encrypted Secure Note Content' : 'Notes',
+                        hintText: _isSecureNote
+                            ? 'Write secret keys, seed phrases, recovery backup codes, or confidential documents...'
+                            : 'Additional secure notes or recovery codes...',
+                        prefixIcon: const Icon(Icons.notes_rounded, size: 20),
+                        filled: true,
+                        fillColor: Colors.transparent,
+                        border: InputBorder.none,
+                        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                      ),
+                    ),
+                  ],
                 ),
               ),
             ],

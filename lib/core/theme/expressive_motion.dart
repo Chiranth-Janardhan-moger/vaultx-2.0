@@ -1,9 +1,6 @@
 import 'package:flutter/material.dart';
 
 /// Material 3 Expressive motion tokens, spring physics, and curve definitions.
-///
-/// Material 3 Expressive introduces emphasized, spring-based motion curves,
-/// dynamic tactile responses, and expressive easing for buttons, sliders, and icons.
 class ExpressiveMotion {
   ExpressiveMotion._();
 
@@ -11,10 +8,10 @@ class ExpressiveMotion {
   /// Emphasized curve for standard expressive transitions (entrance + exit combined)
   static const Curve emphasized = Cubic(0.2, 0.0, 0.0, 1.0);
 
-  /// Emphasized decelerate curve for incoming elements (elements entering the screen or expanding)
+  /// Emphasized decelerate curve for incoming elements
   static const Curve emphasizedDecelerate = Cubic(0.05, 0.7, 0.1, 1.0);
 
-  /// Emphasized accelerate curve for outgoing elements (elements exiting the screen or collapsing)
+  /// Emphasized accelerate curve for outgoing elements
   static const Curve emphasizedAccelerate = Cubic(0.3, 0.0, 0.8, 0.15);
 
   /// Expressive bouncy spring curve for tactile press releases and micro-interactions
@@ -40,21 +37,18 @@ class ExpressiveMotion {
   static const Duration durationLong4 = Duration(milliseconds: 600);
 
   // --- Expressive Spring Physics Specifications ---
-  /// Lively spring description for buttons and icon releases
   static const SpringDescription livelySpring = SpringDescription(
     mass: 1.0,
     stiffness: 260.0,
     damping: 18.0,
   );
 
-  /// Snappy spring description for slider thumbs and toggles
   static const SpringDescription snappySpring = SpringDescription(
     mass: 1.0,
     stiffness: 380.0,
     damping: 24.0,
   );
 
-  /// Gentle spring description for floating tooltips and balloon indicators
   static const SpringDescription gentleSpring = SpringDescription(
     mass: 1.0,
     stiffness: 180.0,
@@ -73,8 +67,6 @@ class _ExpressiveSpringCurve extends Curve {
 
   @override
   double transformInternal(double t) {
-    // Damped harmonic oscillation curve for realistic physical spring feel
-    // t ranges from 0.0 to 1.0
     if (t == 0.0 || t == 1.0) return t;
     return (1.0 - (1.0 - t)) *
             (1.0 - 0.15 * (1.0 - t)) +

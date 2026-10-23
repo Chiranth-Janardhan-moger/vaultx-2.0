@@ -27,15 +27,13 @@ dependencies:
   local_auth: ^3.0.2
 
   # LAN Discovery & Network Transfer
-  bonsoir: ^7.1.5
   web_socket_channel: ^3.0.1
 
   # QR Code Generation & Scanning
   qr_flutter: ^4.1.0
   mobile_scanner: ^7.4.2
 
-  # Icons & Fonts
-  cupertino_icons: ^2.0.0
+  # Media & Hardware
   google_mlkit_text_recognition: ^0.17.1
   camera: ^0.12.1
   permission_handler: ^13.0.2
@@ -51,3 +49,5 @@ dev_dependencies:
 
 flutter:
   uses-material-design: true
+  assets:
+    - assets/images/

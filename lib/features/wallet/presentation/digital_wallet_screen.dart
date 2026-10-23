@@ -3,7 +3,6 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:vaultx/core/services/clipboard_security_service.dart';
 import 'package:vaultx/core/theme/app_theme.dart';
-import 'package:vaultx/core/widgets/expressive/expressive.dart';
 import 'package:vaultx/core/widgets/physical_card_widget.dart';
 import 'package:vaultx/features/wallet/domain/wallet_card_entry.dart';
 import 'package:vaultx/features/wallet/presentation/providers/wallet_cards_provider.dart';
@@ -116,14 +115,23 @@ class _DigitalWalletScreenState extends ConsumerState<DigitalWalletScreen> {
                     Row(
                       mainAxisSize: MainAxisSize.min,
                       children: [
-                        ExpressiveIconButton.outlined(
+                        IconButton.outlined(
                           onPressed: _navigateToScanCard,
+                          style: IconButton.styleFrom(
+                            side: BorderSide(color: borderCol),
+                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                          ),
                           icon: const Icon(Icons.document_scanner_rounded, size: 20),
                           tooltip: 'Scan Card',
                         ),
                         const SizedBox(width: 8),
-                        ExpressiveIconButton.filled(
+                        IconButton.filled(
                           onPressed: () => _navigateToAddCard(),
+                          style: IconButton.styleFrom(
+                            backgroundColor: AppColors.primaryBlue,
+                            foregroundColor: Colors.white,
+                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                          ),
                           icon: const Icon(Icons.add_rounded, size: 22),
                           tooltip: 'Add Card',
                         ),

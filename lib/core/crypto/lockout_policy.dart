@@ -43,29 +43,21 @@ class AuthLockoutPolicy {
     this.onWipeVault,
   }) : _storage = storage ?? AppSecureStorage.instance;
 
+  static const _delays = [
+    Duration(seconds: 30),
+    Duration(minutes: 1),
+    Duration(minutes: 5),
+    Duration(minutes: 15),
+    Duration(minutes: 30),
+    Duration(hours: 1),
+    Duration(hours: 2),
+  ];
+
   /// Calculates progressive delay based on consecutive failed attempts.
   Duration calculateLockoutDuration(int failedCount) {
-    if (failedCount < attemptsBeforeDelay) {
-      return Duration.zero;
-    }
-    switch (failedCount) {
-      case 3:
-        return const Duration(seconds: 30);
-      case 4:
-        return const Duration(minutes: 1);
-      case 5:
-        return const Duration(minutes: 5);
-      case 6:
-        return const Duration(minutes: 15);
-      case 7:
-        return const Duration(minutes: 30);
-      case 8:
-        return const Duration(hours: 1);
-      case 9:
-        return const Duration(hours: 2);
-      default:
-        return const Duration(hours: 24);
-    }
+    if (failedCount < attemptsBeforeDelay) return Duration.zero;
+    final idx = failedCount - attemptsBeforeDelay;
+    return idx < _delays.length ? _delays[idx] : const Duration(hours: 24);
   }
 
   /// Queries the current lockout state.

@@ -5,7 +5,6 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/theme/happy_feedback.dart';
-import '../../../core/widgets/expressive/expressive_button.dart';
 import '../../vault/presentation/providers/vault_passwords_provider.dart';
 import '../../wallet/presentation/providers/wallet_cards_provider.dart';
 import '../domain/vxb_backup_service.dart';
@@ -399,13 +398,20 @@ class _BackupRestoreScreenState extends ConsumerState<BackupRestoreScreen>
         const SizedBox(height: 28),
 
         // Export CTA
-        ExpressiveButton.filled(
-          onPressed: _isExporting ? null : _handleExport,
-          isLoading: _isExporting,
-          size: ExpressiveButtonSize.large,
-          isFullWidth: true,
-          icon: const Icon(Icons.file_upload_outlined, size: 22),
-          label: 'Export .vxb Backup',
+        SizedBox(
+          width: double.infinity,
+          height: 52,
+          child: FilledButton.icon(
+            onPressed: _isExporting ? null : _handleExport,
+            style: FilledButton.styleFrom(
+              backgroundColor: AppColors.primaryBlue,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+            ),
+            icon: _isExporting
+                ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
+                : const Icon(Icons.file_upload_outlined, size: 22),
+            label: Text(_isExporting ? 'Exporting...' : 'Export .vxb Backup', style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w700)),
+          ),
         ),
 
         if (_lastExportedFile != null) ...[
@@ -705,14 +711,25 @@ class _BackupRestoreScreenState extends ConsumerState<BackupRestoreScreen>
                 const SizedBox(height: 20),
 
                 // Restore CTA
-                ExpressiveButton.filled(
-                  onPressed: _isRestoring ? null : _handleApplyRestore,
-                  isLoading: _isRestoring,
-                  size: ExpressiveButtonSize.large,
-                  isFullWidth: true,
-                  customColor: _replaceExisting ? AppColors.rose500 : AppColors.primaryBlue,
-                  icon: const Icon(Icons.cloud_download_rounded, size: 22),
-                  label: _replaceExisting ? 'Replace Vault with Backup' : 'Restore & Merge Vault',
+                SizedBox(
+                  width: double.infinity,
+                  height: 52,
+                  child: FilledButton.icon(
+                    onPressed: _isRestoring ? null : _handleApplyRestore,
+                    style: FilledButton.styleFrom(
+                      backgroundColor: _replaceExisting ? AppColors.rose500 : AppColors.primaryBlue,
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                    ),
+                    icon: _isRestoring
+                        ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
+                        : const Icon(Icons.cloud_download_rounded, size: 22),
+                    label: Text(
+                      _isRestoring
+                          ? 'Restoring...'
+                          : (_replaceExisting ? 'Replace Vault with Backup' : 'Restore & Merge Vault'),
+                      style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w700),
+                    ),
+                  ),
                 ),
               ],
             ),

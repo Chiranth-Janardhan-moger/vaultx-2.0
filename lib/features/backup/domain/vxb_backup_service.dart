@@ -186,7 +186,10 @@ class VxbBackupService {
     final username = item['username']?.toString() ?? '';
     final email = item['email']?.toString() ?? '';
     final password = item['password']?.toString() ?? '';
-    final category = item['category']?.toString() ?? item['folder']?.toString() ?? 'All';
+    final rawCategory = item['category']?.toString() ?? item['folder']?.toString() ?? 'Others';
+    final category = (rawCategory.trim().isEmpty || rawCategory.trim().toLowerCase() == 'all')
+        ? 'Others'
+        : rawCategory.trim();
     final websiteUrl = item['websiteUrl']?.toString() ?? '';
     final notes = item['notes']?.toString() ?? '';
     final totpSecret = item['totpSecret']?.toString() ?? item['totp']?.toString() ?? '';

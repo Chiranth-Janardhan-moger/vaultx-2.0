@@ -3,7 +3,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:vaultx/core/services/clipboard_security_service.dart';
 import 'package:vaultx/core/theme/app_theme.dart';
-import 'package:vaultx/core/widgets/expressive/expressive.dart';
+import 'package:vaultx/core/theme/happy_feedback.dart';
 import 'package:vaultx/features/vault/domain/vault_password_entry.dart';
 import 'package:vaultx/features/vault/domain/vault_watchtower_engine.dart';
 import 'package:vaultx/features/vault/presentation/providers/vault_passwords_provider.dart';
@@ -24,62 +24,6 @@ class PasswordsVaultScreen extends ConsumerStatefulWidget {
 
 class _PasswordsVaultScreenState extends ConsumerState<PasswordsVaultScreen> {
   final _searchController = TextEditingController();
-
-  void _showAddCategoryDialog() {
-    final textController = TextEditingController();
-    showDialog<void>(
-      context: context,
-      builder: (ctx) {
-        final isDark = Theme.of(ctx).brightness == Brightness.dark;
-        return AlertDialog(
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-          title: const Text(
-            'New Category',
-            style: TextStyle(fontWeight: FontWeight.w700, fontSize: 18),
-          ),
-          content: TextField(
-            controller: textController,
-            autofocus: true,
-            textCapitalization: TextCapitalization.words,
-            decoration: InputDecoration(
-              labelText: 'Category Name',
-              hintText: 'e.g. Work, Gaming, Crypto',
-              filled: true,
-              fillColor: isDark ? AppColors.darkInputSurface : AppColors.lightInputSurface,
-              border: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(14),
-              ),
-            ),
-            onSubmitted: (val) => _submitNewCategory(val, ctx),
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.of(ctx).pop(),
-              child: const Text('Cancel'),
-            ),
-            FilledButton(
-              onPressed: () => _submitNewCategory(textController.text, ctx),
-              style: FilledButton.styleFrom(
-                backgroundColor: AppColors.primaryBlue,
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-              ),
-              child: const Text('Add'),
-            ),
-          ],
-        );
-      },
-    );
-  }
-
-  void _submitNewCategory(String name, BuildContext dialogContext) {
-    final trimmed = name.trim();
-    if (trimmed.isEmpty) return;
-
-    ref.read(vaultPasswordsProvider.notifier).addCategory(trimmed);
-    ref.read(vaultPasswordsProvider.notifier).setSelectedCategory(trimmed);
-    HapticFeedback.mediumImpact();
-    Navigator.of(dialogContext).pop();
-  }
 
   @override
   void dispose() {
@@ -116,23 +60,353 @@ class _PasswordsVaultScreenState extends ConsumerState<PasswordsVaultScreen> {
     );
   }
 
-  /// Returns a compact "27 Sep, 2:43 PM" style label for the last-edited time.
-  String _formatUpdatedAt(DateTime dt) {
-    final now = DateTime.now();
-    final today = DateTime(now.year, now.month, now.day);
-    final yesterday = today.subtract(const Duration(days: 1));
-    final date = DateTime(dt.year, dt.month, dt.day);
+  void _openAddCategory() async {
+    final newCat = await showAddCategoryDialog(context, ref);
+    if (newCat != null && mounted) {
+      ref.read(vaultPasswordsProvider.notifier).setSelectedCategory(newCat);
+    }
+  }
 
-    final hour = dt.hour % 12 == 0 ? 12 : dt.hour % 12;
-    final minute = dt.minute.toString().padLeft(2, '0');
-    final period = dt.hour >= 12 ? 'PM' : 'AM';
-    final time = '$hour:$minute $period';
+  void _showCategoryActionSheet(String category) {
+    HapticFeedback.mediumImpact();
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final sheetBg = isDark ? AppColors.darkCardSurface : AppColors.lightCardSurface;
+    final borderCol = isDark ? AppColors.darkBorder : AppColors.lightBorder;
+    final mutedCol = isDark ? AppColors.darkTextMuted : AppColors.lightTextMuted;
+    final catColor = getCategoryColor(category);
 
-    if (date == today) return 'Today, $time';
-    if (date == yesterday) return 'Yesterday, $time';
+    showModalBottomSheet<void>(
+      context: context,
+      backgroundColor: Colors.transparent,
+      builder: (sheetCtx) {
+        return Material(
+          color: sheetBg,
+          borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
+          child: Container(
+            padding: const EdgeInsets.fromLTRB(20, 12, 20, 24),
+            decoration: BoxDecoration(
+              borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
+              border: Border.all(color: borderCol),
+            ),
+            child: SafeArea(
+              top: false,
+              child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                // Drag handle
+                Container(
+                  width: 36,
+                  height: 4,
+                  margin: const EdgeInsets.only(bottom: 16),
+                  decoration: BoxDecoration(
+                    color: isDark ? Colors.white24 : Colors.black12,
+                    borderRadius: BorderRadius.circular(2),
+                  ),
+                ),
 
-    const months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
-    return '${dt.day} ${months[dt.month - 1]}, $time';
+                // Header
+                Row(
+                  children: [
+                    Container(
+                      width: 40,
+                      height: 40,
+                      decoration: BoxDecoration(
+                        color: catColor.withAlpha(isDark ? 40 : 25),
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(color: catColor.withAlpha(100), width: 1),
+                      ),
+                      alignment: Alignment.center,
+                      child: Icon(
+                        Icons.label_rounded,
+                        color: catColor,
+                        size: 20,
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            category,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: const TextStyle(
+                              fontSize: 16,
+                              fontWeight: FontWeight.w700,
+                            ),
+                          ),
+                          const SizedBox(height: 2),
+                          Text(
+                            'Category Options',
+                            style: TextStyle(
+                              fontSize: 12,
+                              color: mutedCol,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 16),
+                Divider(height: 1, color: borderCol),
+                const SizedBox(height: 8),
+
+                // Option 1: Edit Category
+                ListTile(
+                  contentPadding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                  leading: Container(
+                    width: 38,
+                    height: 38,
+                    decoration: BoxDecoration(
+                      color: AppColors.primaryBlue.withAlpha(25),
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    alignment: Alignment.center,
+                    child: const Icon(
+                      Icons.edit_rounded,
+                      color: AppColors.primaryBlue,
+                      size: 20,
+                    ),
+                  ),
+                  title: const Text(
+                    'Edit Category',
+                    style: TextStyle(fontSize: 15, fontWeight: FontWeight.w600),
+                  ),
+                  subtitle: Text(
+                    'Rename this category tag',
+                    style: TextStyle(fontSize: 12, color: mutedCol),
+                  ),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                  onTap: () {
+                    Navigator.of(sheetCtx).pop();
+                    _openEditCategoryDialog(category);
+                  },
+                ),
+
+                // Option 2: Delete Category
+                ListTile(
+                  contentPadding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                  leading: Container(
+                    width: 38,
+                    height: 38,
+                    decoration: BoxDecoration(
+                      color: AppColors.rose500.withAlpha(25),
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    alignment: Alignment.center,
+                    child: const Icon(
+                      Icons.delete_outline_rounded,
+                      color: AppColors.rose500,
+                      size: 20,
+                    ),
+                  ),
+                  title: const Text(
+                    'Delete Category',
+                    style: TextStyle(
+                      fontSize: 15,
+                      fontWeight: FontWeight.w600,
+                      color: AppColors.rose500,
+                    ),
+                  ),
+                  subtitle: Text(
+                    'Move items in this tag to Others',
+                    style: TextStyle(fontSize: 12, color: mutedCol),
+                  ),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                  onTap: () {
+                    Navigator.of(sheetCtx).pop();
+                    _confirmDeleteCategory(category);
+                  },
+                ),
+              ],
+            ),
+          ),
+        ),
+      );
+    },
+  );
+  }
+
+  void _openEditCategoryDialog(String oldCategory) {
+    final textController = TextEditingController(text: oldCategory);
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final cardBg = isDark ? AppColors.darkCardSurface : AppColors.lightCardSurface;
+    final borderCol = isDark ? AppColors.darkBorder : AppColors.lightBorder;
+    final mutedCol = isDark ? AppColors.darkTextMuted : AppColors.lightTextMuted;
+    final inputBg = isDark ? AppColors.darkInputSurface : AppColors.lightInputSurface;
+
+    void submit(BuildContext dialogCtx) {
+      final newName = textController.text.trim();
+      if (newName.isEmpty) return;
+      if (newName.toLowerCase() != oldCategory.toLowerCase()) {
+        ref.read(vaultPasswordsProvider.notifier).renameCategory(oldCategory, newName);
+        HappyFeedback.show(context, message: 'Category renamed to "$newName"');
+      }
+      Navigator.of(dialogCtx).pop();
+    }
+
+    showDialog<void>(
+      context: context,
+      builder: (dialogCtx) {
+        return Dialog(
+          backgroundColor: cardBg,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(20),
+            side: BorderSide(color: borderCol),
+          ),
+          child: Padding(
+            padding: const EdgeInsets.all(20),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    Container(
+                      width: 40,
+                      height: 40,
+                      decoration: BoxDecoration(
+                        color: AppColors.primaryBlue.withAlpha(isDark ? 35 : 20),
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      alignment: Alignment.center,
+                      child: const Icon(
+                        Icons.edit_rounded,
+                        color: AppColors.primaryBlue,
+                        size: 20,
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          const Text(
+                            'Edit Category',
+                            style: TextStyle(
+                              fontSize: 18,
+                              fontWeight: FontWeight.w700,
+                            ),
+                          ),
+                          const SizedBox(height: 2),
+                          Text(
+                            'Rename "$oldCategory"',
+                            style: TextStyle(
+                              fontSize: 12,
+                              color: mutedCol,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 18),
+                TextField(
+                  controller: textController,
+                  autofocus: true,
+                  textCapitalization: TextCapitalization.words,
+                  decoration: InputDecoration(
+                    labelText: 'Category Name',
+                    filled: true,
+                    fillColor: inputBg,
+                    contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                      borderSide: BorderSide(color: borderCol),
+                    ),
+                    enabledBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                      borderSide: BorderSide(color: borderCol),
+                    ),
+                    focusedBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                      borderSide: const BorderSide(color: AppColors.primaryBlue, width: 1.5),
+                    ),
+                  ),
+                  onSubmitted: (_) => submit(dialogCtx),
+                ),
+                const SizedBox(height: 20),
+                Row(
+                  children: [
+                    Expanded(
+                      child: TextButton(
+                        onPressed: () => Navigator.of(dialogCtx).pop(),
+                        style: TextButton.styleFrom(
+                          padding: const EdgeInsets.symmetric(vertical: 12),
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                        ),
+                        child: Text(
+                          'Cancel',
+                          style: TextStyle(
+                            color: mutedCol,
+                            fontSize: 15,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: FilledButton(
+                        onPressed: () => submit(dialogCtx),
+                        style: FilledButton.styleFrom(
+                          backgroundColor: AppColors.primaryBlue,
+                          foregroundColor: Colors.white,
+                          padding: const EdgeInsets.symmetric(vertical: 12),
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                          elevation: 0,
+                        ),
+                        child: const Text(
+                          'Save',
+                          style: TextStyle(
+                            fontSize: 15,
+                            fontWeight: FontWeight.w700,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  void _confirmDeleteCategory(String category) {
+    showDialog<void>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: Text('Delete "$category"?'),
+        content: const Text(
+          'Items under this category will be moved to "Others". This category tag will be removed.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(),
+            child: const Text('Cancel'),
+          ),
+          FilledButton(
+            style: FilledButton.styleFrom(
+              backgroundColor: AppColors.rose500,
+              foregroundColor: Colors.white,
+            ),
+            onPressed: () {
+              ref.read(vaultPasswordsProvider.notifier).deleteCategory(category);
+              HapticFeedback.heavyImpact();
+              Navigator.of(ctx).pop();
+              HappyFeedback.show(context, message: 'Category "$category" deleted');
+            },
+            child: const Text('Delete'),
+          ),
+        ],
+      ),
+    );
   }
 
   @override
@@ -141,18 +415,15 @@ class _PasswordsVaultScreenState extends ConsumerState<PasswordsVaultScreen> {
     final vaultState = ref.watch(vaultPasswordsProvider);
     final entries = vaultState.filteredEntries;
     final report = VaultWatchtowerEngine.audit(vaultState.allEntries);
-    final categories = ['All', 'Favorites', ...vaultState.allCategories];
+    final categories = vaultState.allCategories;
 
     final cardBg = isDark ? AppColors.darkCardSurface : AppColors.lightCardSurface;
     final inputBg = isDark ? AppColors.darkInputSurface : AppColors.lightInputSurface;
     final borderCol = isDark ? AppColors.darkBorder : AppColors.lightBorder;
-    final mutedCol = isDark ? AppColors.darkTextMuted : AppColors.lightTextMuted;
 
-    final securityColor = report.healthScore < 50
-        ? AppColors.rose500
-        : report.healthScore < 80
-            ? AppColors.amber500
-            : AppColors.emerald500;
+    final securityColor = report.healthScore >= 80
+        ? AppColors.emerald500
+        : AppColors.amber500;
 
     return Scaffold(
       body: SafeArea(
@@ -182,74 +453,38 @@ class _PasswordsVaultScreenState extends ConsumerState<PasswordsVaultScreen> {
                     Row(
                       mainAxisSize: MainAxisSize.min,
                       children: [
-                        // Compact Sort Menu
-                        Container(
-                          height: 40,
-                          width: 40,
-                          decoration: BoxDecoration(
-                            color: cardBg,
-                            shape: BoxShape.circle,
-                            border: Border.all(color: borderCol),
-                          ),
-                          child: PopupMenuButton<VaultSortOption>(
-                            tooltip: 'Sort Options',
-                            icon: Icon(
-                              Icons.swap_vert_rounded,
-                              size: 20,
-                              color: isDark ? AppColors.darkTextPrimary : AppColors.lightTextPrimary,
+                        // Security Health Score Shield Icon
+                        Tooltip(
+                          message: 'Security Health Score (${report.healthScore}%)',
+                          child: GestureDetector(
+                            onTap: _openWatchtowerSheet,
+                            child: Container(
+                              height: 40,
+                              width: 40,
+                              decoration: BoxDecoration(
+                                color: cardBg,
+                                shape: BoxShape.circle,
+                                border: Border.all(color: borderCol),
+                              ),
+                              alignment: Alignment.center,
+                              child: Icon(
+                                Icons.shield_rounded,
+                                size: 20,
+                                color: securityColor,
+                              ),
                             ),
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(16),
-                              side: BorderSide(color: borderCol),
-                            ),
-                            color: cardBg,
-                            onSelected: (option) {
-                              HapticFeedback.selectionClick();
-                              ref.read(vaultPasswordsProvider.notifier).setSortOption(option);
-                            },
-                            itemBuilder: (context) {
-                              return VaultSortOption.values.map((option) {
-                                final isSelected = vaultState.activeSortOption == option;
-                                return PopupMenuItem<VaultSortOption>(
-                                  value: option,
-                                  child: Row(
-                                    children: [
-                                      Icon(
-                                        option.icon,
-                                        size: 18,
-                                        color: isSelected ? AppColors.primaryBlue : mutedCol,
-                                      ),
-                                      const SizedBox(width: 10),
-                                      Expanded(
-                                        child: Text(
-                                          option.label,
-                                          style: TextStyle(
-                                            fontSize: 13,
-                                            fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
-                                            color: isSelected
-                                                ? AppColors.primaryBlue
-                                                : (isDark ? Colors.white : Colors.black87),
-                                          ),
-                                        ),
-                                      ),
-                                      if (isSelected)
-                                        const Icon(
-                                          Icons.check_rounded,
-                                          size: 16,
-                                          color: AppColors.primaryBlue,
-                                        ),
-                                    ],
-                                  ),
-                                );
-                              }).toList();
-                            },
                           ),
                         ),
                         const SizedBox(width: 10),
 
                         // Add Password Button
-                        ExpressiveIconButton.filled(
+                        IconButton.filled(
                           onPressed: _navigateToAdd,
+                          style: IconButton.styleFrom(
+                            backgroundColor: AppColors.primaryBlue,
+                            foregroundColor: Colors.white,
+                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                          ),
                           icon: const Icon(Icons.add_rounded, size: 22),
                           tooltip: 'Add Password',
                         ),
@@ -297,104 +532,6 @@ class _PasswordsVaultScreenState extends ConsumerState<PasswordsVaultScreen> {
               ),
             ),
 
-            // Apple-Style Inset Security Health Banner
-            if (report.totalCredentials > 0)
-              SliverToBoxAdapter(
-                child: Padding(
-                  padding: const EdgeInsets.fromLTRB(20, 8, 20, 4),
-                  child: Material(
-                    color: Colors.transparent,
-                    child: InkWell(
-                      borderRadius: BorderRadius.circular(16),
-                      onTap: _openWatchtowerSheet,
-                      child: Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 11),
-                        decoration: BoxDecoration(
-                          color: securityColor.withAlpha(isDark ? 28 : 18),
-                          borderRadius: BorderRadius.circular(16),
-                          border: Border.all(
-                            color: securityColor.withAlpha(isDark ? 80 : 50),
-                            width: 1,
-                          ),
-                        ),
-                        child: Row(
-                          children: [
-                            Container(
-                              width: 36,
-                              height: 36,
-                              decoration: BoxDecoration(
-                                color: securityColor.withAlpha(isDark ? 50 : 35),
-                                borderRadius: BorderRadius.circular(10),
-                              ),
-                              child: Icon(
-                                report.hasIssues ? Icons.shield_rounded : Icons.verified_user_rounded,
-                                size: 20,
-                                color: securityColor,
-                              ),
-                            ),
-                            const SizedBox(width: 12),
-                            Expanded(
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Row(
-                                    children: [
-                                      Text(
-                                        report.hasIssues
-                                            ? 'Security Recommendations'
-                                            : 'Vault Security Optimal',
-                                        style: TextStyle(
-                                          fontSize: 13,
-                                          fontWeight: FontWeight.w700,
-                                          color: securityColor,
-                                        ),
-                                      ),
-                                      if (report.hasIssues) ...[
-                                        const SizedBox(width: 6),
-                                        Container(
-                                          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1.5),
-                                          decoration: BoxDecoration(
-                                            color: securityColor.withAlpha(isDark ? 55 : 35),
-                                            borderRadius: BorderRadius.circular(6),
-                                          ),
-                                          child: Text(
-                                            '${report.totalIssues} ${report.totalIssues == 1 ? 'issue' : 'issues'}',
-                                            style: TextStyle(
-                                              fontSize: 10,
-                                              fontWeight: FontWeight.w800,
-                                              color: securityColor,
-                                            ),
-                                          ),
-                                        ),
-                                      ],
-                                    ],
-                                  ),
-                                  const SizedBox(height: 2),
-                                  Text(
-                                    report.hasIssues
-                                        ? '${report.healthScore}% Health Score • Tap to inspect and fix'
-                                        : '100% Health Score • Zero vulnerabilities detected',
-                                    style: TextStyle(
-                                      fontSize: 11.5,
-                                      color: isDark ? AppColors.darkTextMuted : AppColors.lightTextMuted,
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ),
-                            Icon(
-                              Icons.chevron_right_rounded,
-                              size: 18,
-                              color: securityColor,
-                            ),
-                          ],
-                        ),
-                      ),
-                    ),
-                  ),
-                ),
-              ),
-
             // Category Filter Pills
             SliverToBoxAdapter(
               child: SizedBox(
@@ -406,33 +543,38 @@ class _PasswordsVaultScreenState extends ConsumerState<PasswordsVaultScreen> {
                   separatorBuilder: (_, __) => const SizedBox(width: 8),
                   itemBuilder: (context, index) {
                     if (index == categories.length) {
-                      return GestureDetector(
-                        onTap: _showAddCategoryDialog,
-                        child: Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                          decoration: BoxDecoration(
-                            color: cardBg,
-                            borderRadius: BorderRadius.circular(12),
-                            border: Border.all(
-                              color: AppColors.primaryBlue.withAlpha(140),
-                              width: 1.2,
-                            ),
-                          ),
-                          alignment: Alignment.center,
-                          child: const Row(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              Icon(Icons.add_rounded, size: 16, color: AppColors.primaryBlue),
-                              SizedBox(width: 4),
-                              Text(
-                                'Add',
-                                style: TextStyle(
-                                  fontSize: 13,
-                                  fontWeight: FontWeight.w700,
-                                  color: AppColors.primaryBlue,
-                                ),
+                      return Semantics(
+                        button: true,
+                        label: 'Add Category',
+                        child: GestureDetector(
+                          onTap: _openAddCategory,
+                          child: AnimatedContainer(
+                            duration: const Duration(milliseconds: 180),
+                            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
+                            decoration: BoxDecoration(
+                              color: cardBg,
+                              borderRadius: BorderRadius.circular(12),
+                              border: Border.all(
+                                color: AppColors.primaryBlue.withAlpha(140),
+                                width: 1.2,
                               ),
-                            ],
+                            ),
+                            alignment: Alignment.center,
+                            child: const Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Icon(Icons.add_rounded, size: 16, color: AppColors.primaryBlue),
+                                SizedBox(width: 4),
+                                Text(
+                                  '+ Add',
+                                  style: TextStyle(
+                                    fontSize: 13,
+                                    fontWeight: FontWeight.w700,
+                                    color: AppColors.primaryBlue,
+                                  ),
+                                ),
+                              ],
+                            ),
                           ),
                         ),
                       );
@@ -441,52 +583,21 @@ class _PasswordsVaultScreenState extends ConsumerState<PasswordsVaultScreen> {
                     final cat = categories[index];
                     final isSelected = vaultState.selectedCategory.toLowerCase() == cat.toLowerCase();
                     final isFav = cat.toLowerCase() == 'favorites';
+                    final isAll = cat.toLowerCase() == 'all';
 
-                    return Semantics(
-                      button: true,
-                      selected: isSelected,
-                      child: GestureDetector(
-                        onTap: () {
-                          HapticFeedback.selectionClick();
-                          ref.read(vaultPasswordsProvider.notifier).setSelectedCategory(cat);
-                        },
-                        child: AnimatedContainer(
-                          duration: const Duration(milliseconds: 180),
-                          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
-                          decoration: BoxDecoration(
-                            color: isSelected ? AppColors.primaryBlue : cardBg,
-                            borderRadius: BorderRadius.circular(12),
-                            border: Border.all(
-                              color: isSelected ? AppColors.primaryBlue : borderCol,
-                              width: 1,
-                            ),
-                          ),
-                          alignment: Alignment.center,
-                          child: Row(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              if (isFav) ...[
-                                Icon(
-                                  Icons.star_rounded,
-                                  size: 15,
-                                  color: isSelected ? Colors.white : Colors.amber,
-                                ),
-                                const SizedBox(width: 5),
-                              ],
-                              Text(
-                                cat,
-                                style: TextStyle(
-                                  fontSize: 13,
-                                  fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
-                                  color: isSelected
-                                      ? Colors.white
-                                      : (isDark ? AppColors.darkTextPrimary : AppColors.lightTextPrimary),
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                      ),
+                    return _CategoryFilterPill(
+                      category: cat,
+                      isSelected: isSelected,
+                      isDark: isDark,
+                      cardBg: cardBg,
+                      borderCol: borderCol,
+                      onTap: () {
+                        HapticFeedback.selectionClick();
+                        ref.read(vaultPasswordsProvider.notifier).setSelectedCategory(cat);
+                      },
+                      onLongPress: (isAll || isFav)
+                          ? null
+                          : () => _showCategoryActionSheet(cat),
                     );
                   },
                 ),
@@ -544,7 +655,7 @@ class _PasswordsVaultScreenState extends ConsumerState<PasswordsVaultScreen> {
                                   ),
                                   const SizedBox(width: 12),
 
-                                  // Title, Username, and Inline Metadata
+                                  // Title and Inline Username • Category
                                   Expanded(
                                     child: Column(
                                       crossAxisAlignment: CrossAxisAlignment.start,
@@ -559,57 +670,51 @@ class _PasswordsVaultScreenState extends ConsumerState<PasswordsVaultScreen> {
                                             letterSpacing: -0.2,
                                           ),
                                         ),
-                                        const SizedBox(height: 2),
-                                        Text(
-                                          entry.username.isNotEmpty
-                                              ? entry.username
-                                              : (entry.email.isNotEmpty
-                                                  ? entry.email
-                                                  : (entry.isSecureNote ? 'Secure Note' : 'No username')),
-                                          maxLines: 1,
-                                          overflow: TextOverflow.ellipsis,
-                                          style: TextStyle(
-                                            fontSize: 13,
-                                            color: isDark
-                                                ? AppColors.darkTextMuted
-                                                : AppColors.lightTextMuted,
-                                          ),
-                                        ),
-                                        const SizedBox(height: 5),
+                                        const SizedBox(height: 3),
                                         Row(
                                           children: [
                                             Flexible(
                                               child: Text(
-                                                entry.category,
+                                                entry.username.isNotEmpty
+                                                    ? entry.username
+                                                    : (entry.email.isNotEmpty
+                                                        ? entry.email
+                                                        : (entry.isSecureNote ? 'Secure Note' : 'No username')),
                                                 maxLines: 1,
                                                 overflow: TextOverflow.ellipsis,
                                                 style: TextStyle(
-                                                  fontSize: 11,
-                                                  fontWeight: FontWeight.w600,
+                                                  fontSize: 13,
                                                   color: isDark
                                                       ? AppColors.darkTextMuted
                                                       : AppColors.lightTextMuted,
                                                 ),
                                               ),
                                             ),
-                                            const SizedBox(width: 6),
-                                            Text(
-                                              '•',
-                                              style: TextStyle(
-                                                fontSize: 10,
-                                                color: isDark ? Colors.white24 : Colors.black26,
+                                            if (entry.category.isNotEmpty) ...[
+                                              Padding(
+                                                padding: const EdgeInsets.symmetric(horizontal: 5),
+                                                child: Text(
+                                                  '•',
+                                                  style: TextStyle(
+                                                    fontSize: 11,
+                                                    color: isDark ? Colors.white24 : Colors.black26,
+                                                  ),
+                                                ),
                                               ),
-                                            ),
-                                            const SizedBox(width: 6),
-                                            Text(
-                                              _formatUpdatedAt(entry.updatedAt),
-                                              style: TextStyle(
-                                                fontSize: 11,
-                                                color: isDark
-                                                    ? AppColors.darkTextMuted.withAlpha(180)
-                                                    : AppColors.lightTextMuted.withAlpha(180),
+                                              ConstrainedBox(
+                                                constraints: const BoxConstraints(maxWidth: 120),
+                                                child: Text(
+                                                  entry.category,
+                                                  maxLines: 1,
+                                                  overflow: TextOverflow.ellipsis,
+                                                  style: TextStyle(
+                                                    fontSize: 12,
+                                                    fontWeight: FontWeight.w600,
+                                                    color: getCategoryColor(entry.category),
+                                                  ),
+                                                ),
                                               ),
-                                            ),
+                                            ],
                                           ],
                                         ),
                                       ],
@@ -712,6 +817,101 @@ class _PasswordsVaultScreenState extends ConsumerState<PasswordsVaultScreen> {
     ),
   ),
 );
+  }
+}
+
+class _CategoryFilterPill extends StatefulWidget {
+  final String category;
+  final bool isSelected;
+  final bool isDark;
+  final Color cardBg;
+  final Color borderCol;
+  final VoidCallback onTap;
+  final VoidCallback? onLongPress;
+
+  const _CategoryFilterPill({
+    required this.category,
+    required this.isSelected,
+    required this.isDark,
+    required this.cardBg,
+    required this.borderCol,
+    required this.onTap,
+    this.onLongPress,
+  });
+
+  @override
+  State<_CategoryFilterPill> createState() => _CategoryFilterPillState();
+}
+
+class _CategoryFilterPillState extends State<_CategoryFilterPill> {
+  bool _isHovered = false;
+
+  @override
+  Widget build(BuildContext context) {
+    final isFav = widget.category.toLowerCase() == 'favorites';
+    final isAll = widget.category.toLowerCase() == 'all';
+    final catColor = getCategoryColor(widget.category);
+    final showDot = !isAll && !isFav && !widget.isSelected && !_isHovered;
+
+    return Semantics(
+      button: true,
+      selected: widget.isSelected,
+      child: MouseRegion(
+        onEnter: (_) => setState(() => _isHovered = true),
+        onExit: (_) => setState(() => _isHovered = false),
+        cursor: SystemMouseCursors.click,
+        child: GestureDetector(
+          onTap: widget.onTap,
+          onLongPress: widget.onLongPress,
+          child: AnimatedContainer(
+            duration: const Duration(milliseconds: 180),
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
+            decoration: BoxDecoration(
+              color: widget.isSelected ? AppColors.primaryBlue : widget.cardBg,
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(
+                color: widget.isSelected ? AppColors.primaryBlue : widget.borderCol,
+                width: 1,
+              ),
+            ),
+            alignment: Alignment.center,
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                if (isFav) ...[
+                  Icon(
+                    Icons.star_rounded,
+                    size: 15,
+                    color: widget.isSelected ? Colors.white : Colors.amber,
+                  ),
+                  const SizedBox(width: 5),
+                ] else if (showDot) ...[
+                  Container(
+                    width: 6,
+                    height: 6,
+                    decoration: BoxDecoration(
+                      color: catColor,
+                      shape: BoxShape.circle,
+                    ),
+                  ),
+                  const SizedBox(width: 6),
+                ],
+                Text(
+                  widget.category,
+                  style: TextStyle(
+                    fontSize: 13,
+                    fontWeight: widget.isSelected ? FontWeight.w700 : FontWeight.w500,
+                    color: widget.isSelected
+                        ? Colors.white
+                        : (widget.isDark ? AppColors.darkTextPrimary : AppColors.lightTextPrimary),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
   }
 }
 

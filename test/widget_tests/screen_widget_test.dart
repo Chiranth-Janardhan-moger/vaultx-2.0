@@ -292,7 +292,7 @@ void main() {
       await tester.pumpWidget(buildVault(entries: [entry]));
       await tester.pumpAndSettle();
 
-      await tester.tap(find.textContaining('Google').first);
+      await tester.tap(find.textContaining('Google').last);
       await tester.pumpAndSettle();
 
       expect(find.text('Edit'), findsOneWidget);
@@ -313,6 +313,65 @@ void main() {
 
       expect(find.text('Created'), findsOneWidget);
       expect(find.text('Edited'), findsNothing);
+    });
+
+    testWidgets('long-pressing a category pill opens Category Options sheet with Edit and Delete Category', (tester) async {
+      await tester.pumpWidget(buildVault(customCategories: ['Crypto']));
+      await tester.pumpAndSettle();
+
+      final cryptoPill = find.text('Crypto');
+      expect(cryptoPill, findsOneWidget);
+      await tester.longPress(cryptoPill);
+      await tester.pumpAndSettle();
+
+      expect(find.text('Category Options'), findsOneWidget);
+      expect(find.text('Edit Category'), findsOneWidget);
+      expect(find.text('Delete Category'), findsOneWidget);
+    });
+
+    testWidgets('renders inline username and category without dot on card', (tester) async {
+      final entry = _makeEntry(id: 'e1', title: 'Google', username: 'user@gmail.com', category: 'Google');
+      await tester.pumpWidget(buildVault(entries: [entry]));
+      await tester.pumpAndSettle();
+
+      expect(find.text('user@gmail.com'), findsOneWidget);
+      expect(find.text('•'), findsWidgets);
+      expect(find.text('Google'), findsWidgets);
+    });
+  });
+
+  group('VaultPasswordsNotifier Category Management', () {
+    test('renameCategory updates custom category and associated entries', () {
+      final entry = _makeEntry(id: '1', category: 'OldCat');
+      final notifier = VaultPasswordsNotifier();
+      notifier.state = VaultPasswordsState(
+        allEntries: [entry],
+        customCategories: ['OldCat'],
+        selectedCategory: 'OldCat',
+      );
+
+      notifier.renameCategory('OldCat', 'NewCat');
+
+      expect(notifier.state.customCategories, contains('NewCat'));
+      expect(notifier.state.customCategories, isNot(contains('OldCat')));
+      expect(notifier.state.allEntries.first.category, equals('NewCat'));
+      expect(notifier.state.selectedCategory, equals('NewCat'));
+    });
+
+    test('deleteCategory removes category and moves associated entries to Others', () {
+      final entry = _makeEntry(id: '1', category: 'ToDel');
+      final notifier = VaultPasswordsNotifier();
+      notifier.state = VaultPasswordsState(
+        allEntries: [entry],
+        customCategories: ['ToDel'],
+        selectedCategory: 'ToDel',
+      );
+
+      notifier.deleteCategory('ToDel');
+
+      expect(notifier.state.customCategories, isNot(contains('ToDel')));
+      expect(notifier.state.allEntries.first.category, equals('Others'));
+      expect(notifier.state.selectedCategory, equals('All'));
     });
   });
 
@@ -384,7 +443,10 @@ void main() {
       await tester.pumpWidget(buildAddPassword());
       await tester.pumpAndSettle();
 
-      final addCategoryChip = find.text('Add Category');
+      await tester.drag(find.byType(ListView), const Offset(-800, 0));
+      await tester.pumpAndSettle();
+
+      final addCategoryChip = find.text('+ Add');
       expect(addCategoryChip, findsOneWidget);
 
       await tester.tap(addCategoryChip);
@@ -406,12 +468,19 @@ void main() {
       );
       await tester.pumpAndSettle();
 
-      await tester.tap(find.text('Add Category'));
+      await tester.drag(find.byType(ListView), const Offset(-800, 0));
+      await tester.pumpAndSettle();
+
+      final addCategoryChip = find.text('+ Add');
+      await tester.tap(addCategoryChip);
       await tester.pumpAndSettle();
 
       final categoryField = find.widgetWithText(TextField, 'Category Name');
       await tester.enterText(categoryField, 'Gaming');
       await tester.tap(find.text('Add'));
+      await tester.pumpAndSettle();
+
+      await tester.drag(find.byType(ListView), const Offset(800, 0));
       await tester.pumpAndSettle();
 
       expect(find.text('New Category'), findsNothing);
@@ -449,19 +518,12 @@ void main() {
       expect(find.textContaining('alex-dev-99'), findsWidgets);
     });
 
-    testWidgets('renders security health label', (tester) async {
-      await tester.pumpWidget(buildEdit(_makeEntry()));
+    testWidgets('renders category tag selector', (tester) async {
+      await tester.pumpWidget(buildEdit(_makeEntry(category: 'Google')));
       await tester.pumpAndSettle();
 
-      expect(
-        find.byWidgetPredicate((w) =>
-            w is Text &&
-            (w.data?.toLowerCase().contains('secure') == true ||
-                w.data?.toLowerCase().contains('safe') == true ||
-                w.data?.toLowerCase().contains('breach') == true ||
-                w.data?.toLowerCase().contains('health') == true)),
-        findsWidgets,
-      );
+      expect(find.text('CATEGORY'), findsOneWidget);
+      expect(find.text('Google'), findsWidgets);
     });
 
     testWidgets('has a delete action', (tester) async {
