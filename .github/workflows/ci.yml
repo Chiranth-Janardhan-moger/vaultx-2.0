@@ -167,7 +167,7 @@ jobs:
 
       - name: Build iOS Application (No Codesign simulator build)
         if: matrix.target == 'ios'
-        run: flutter build ios --no-codesign --debug
+        run: flutter build ios --simulator --no-codesign --debug
 
       - name: Build macOS Application (unsigned)
         if: matrix.target == 'macos'
