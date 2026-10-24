@@ -494,6 +494,14 @@ class _EditPasswordScreenState extends ConsumerState<EditPasswordScreen> {
                   child: Row(
                     children: [
                       ActionChip(
+                        avatar: const Icon(Icons.pin_outlined, size: 14),
+                        label: const Text('Custom PIN', style: TextStyle(fontSize: 11)),
+                        backgroundColor: cardBg,
+                        onPressed: () => _addCustomField('Custom PIN', '', true),
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16), side: BorderSide(color: borderCol)),
+                      ),
+                      const SizedBox(width: 6),
+                      ActionChip(
                         avatar: const Icon(Icons.badge_outlined, size: 14),
                         label: const Text('Customer ID', style: TextStyle(fontSize: 11)),
                         backgroundColor: cardBg,
@@ -513,7 +521,7 @@ class _EditPasswordScreenState extends ConsumerState<EditPasswordScreen> {
                         avatar: const Icon(Icons.grid_4x4_rounded, size: 14),
                         label: const Text('Card Grid (A-P)', style: TextStyle(fontSize: 11)),
                         backgroundColor: cardBg,
-                        onPressed: () => _addCustomField('Security Grid', '', true),
+                        onPressed: () => _addCustomField('Card Grid (A-P)', '', true),
                         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16), side: BorderSide(color: borderCol)),
                       ),
                       const SizedBox(width: 6),
@@ -529,6 +537,7 @@ class _EditPasswordScreenState extends ConsumerState<EditPasswordScreen> {
                 ),
                 const SizedBox(height: 10),
 
+                // Custom Fields List
                 if (_customFields.isNotEmpty)
                   Container(
                     decoration: BoxDecoration(
@@ -546,86 +555,144 @@ class _EditPasswordScreenState extends ConsumerState<EditPasswordScreen> {
                           children: [
                             if (!isFirst) Divider(height: 1, color: borderCol),
                             Padding(
-                              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                              child: Row(
-                                crossAxisAlignment: CrossAxisAlignment.center,
+                              padding: const EdgeInsets.fromLTRB(14, 10, 10, 12),
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
-                                  // Reorder Controls
-                                  Column(
-                                    mainAxisSize: MainAxisSize.min,
+                                  // Top Row: Reorder buttons, Label input, and Delete Trash Icon
+                                  Row(
                                     children: [
-                                      GestureDetector(
-                                        onTap: isFirst ? null : () => _moveCustomFieldUp(index),
-                                        child: Icon(
-                                          Icons.keyboard_arrow_up_rounded,
-                                          size: 18,
-                                          color: isFirst ? borderCol : textMuted,
+                                      // Reorder buttons pill
+                                      Container(
+                                        decoration: BoxDecoration(
+                                          color: isDark
+                                              ? Colors.white.withAlpha(10)
+                                              : Colors.black.withAlpha(8),
+                                          borderRadius: BorderRadius.circular(8),
+                                        ),
+                                        child: Row(
+                                          mainAxisSize: MainAxisSize.min,
+                                          children: [
+                                            InkWell(
+                                              borderRadius: BorderRadius.circular(8),
+                                              onTap: isFirst ? null : () => _moveCustomFieldUp(index),
+                                              child: Padding(
+                                                padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
+                                                child: Icon(
+                                                  Icons.keyboard_arrow_up_rounded,
+                                                  size: 18,
+                                                  color: isFirst ? borderCol : textMuted,
+                                                ),
+                                              ),
+                                            ),
+                                            Container(
+                                              width: 1,
+                                              height: 12,
+                                              color: borderCol,
+                                            ),
+                                            InkWell(
+                                              borderRadius: BorderRadius.circular(8),
+                                              onTap: isLast ? null : () => _moveCustomFieldDown(index),
+                                              child: Padding(
+                                                padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
+                                                child: Icon(
+                                                  Icons.keyboard_arrow_down_rounded,
+                                                  size: 18,
+                                                  color: isLast ? borderCol : textMuted,
+                                                ),
+                                              ),
+                                            ),
+                                          ],
                                         ),
                                       ),
-                                      GestureDetector(
-                                        onTap: isLast ? null : () => _moveCustomFieldDown(index),
-                                        child: Icon(
-                                          Icons.keyboard_arrow_down_rounded,
-                                          size: 18,
-                                          color: isLast ? borderCol : textMuted,
+                                      const SizedBox(width: 8),
+
+                                      // Field Label Input
+                                      Expanded(
+                                        child: TextField(
+                                          controller: field.labelController,
+                                          style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600),
+                                          decoration: InputDecoration(
+                                            hintText: 'Field label',
+                                            hintStyle: TextStyle(
+                                              fontSize: 12,
+                                              color: textMuted,
+                                              fontWeight: FontWeight.w400,
+                                            ),
+                                            isDense: true,
+                                            border: InputBorder.none,
+                                            contentPadding: const EdgeInsets.symmetric(vertical: 4),
+                                          ),
                                         ),
+                                      ),
+
+                                      // Delete Button: Real Delete Trash Icon
+                                      IconButton(
+                                        icon: const Icon(
+                                          Icons.delete_outline_rounded,
+                                          size: 20,
+                                          color: AppColors.rose500,
+                                        ),
+                                        tooltip: 'Delete field',
+                                        visualDensity: VisualDensity.compact,
+                                        onPressed: () => _removeCustomField(index),
                                       ),
                                     ],
                                   ),
-                                  const SizedBox(width: 8),
+                                  const SizedBox(height: 6),
 
-                                  // Field Label Input
-                                  SizedBox(
-                                    width: 105,
-                                    child: TextField(
-                                      controller: field.labelController,
-                                      style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600),
-                                      decoration: InputDecoration(
-                                        hintText: 'Field label',
-                                        hintStyle: TextStyle(fontSize: 12, color: textMuted),
-                                        border: InputBorder.none,
-                                        isDense: true,
-                                      ),
-                                    ),
-                                  ),
+                                  // Bottom Row: Value Input Box with Lock icon & Eye Toggle
                                   Container(
-                                    width: 1,
-                                    height: 24,
-                                    color: borderCol,
-                                    margin: const EdgeInsets.symmetric(horizontal: 6),
-                                  ),
-
-                                  // Field Value Input
-                                  Expanded(
-                                    child: TextField(
-                                      controller: field.valueController,
-                                      obscureText: field.isConcealed,
-                                      style: const TextStyle(fontSize: 13, fontFamily: 'JetBrains Mono'),
-                                      decoration: InputDecoration(
-                                        hintText: 'Secret value',
-                                        hintStyle: TextStyle(fontSize: 12, color: textMuted, fontFamily: 'Inter'),
-                                        border: InputBorder.none,
-                                        isDense: true,
-                                      ),
+                                    decoration: BoxDecoration(
+                                      color: isDark ? AppColors.darkInputSurface : AppColors.lightInputSurface,
+                                      borderRadius: BorderRadius.circular(12),
+                                      border: Border.all(color: borderCol, width: 1),
                                     ),
-                                  ),
-
-                                  // Conceal Toggle
-                                  IconButton(
-                                    icon: Icon(
-                                      field.isConcealed ? Icons.visibility_off_rounded : Icons.visibility_rounded,
-                                      size: 18,
-                                      color: textMuted,
+                                    child: Row(
+                                      children: [
+                                        Padding(
+                                          padding: const EdgeInsets.only(left: 10, right: 6),
+                                          child: Icon(
+                                            field.isConcealed ? Icons.lock_outline_rounded : Icons.key_rounded,
+                                            size: 16,
+                                            color: textMuted,
+                                          ),
+                                        ),
+                                        Expanded(
+                                          child: TextField(
+                                            controller: field.valueController,
+                                            obscureText: field.isConcealed,
+                                            style: const TextStyle(
+                                              fontSize: 13,
+                                              fontFamily: 'JetBrains Mono',
+                                              letterSpacing: 0.5,
+                                            ),
+                                            decoration: InputDecoration(
+                                              hintText: 'Secret value',
+                                              hintStyle: TextStyle(
+                                                fontSize: 12,
+                                                color: textMuted,
+                                                fontFamily: 'Inter',
+                                                letterSpacing: 0,
+                                              ),
+                                              border: InputBorder.none,
+                                              isDense: true,
+                                              contentPadding: const EdgeInsets.symmetric(vertical: 10),
+                                            ),
+                                          ),
+                                        ),
+                                        IconButton(
+                                          icon: Icon(
+                                            field.isConcealed ? Icons.visibility_off_rounded : Icons.visibility_rounded,
+                                            size: 18,
+                                            color: textMuted,
+                                          ),
+                                          tooltip: field.isConcealed ? 'Masked secret' : 'Visible field',
+                                          visualDensity: VisualDensity.compact,
+                                          onPressed: () => setState(() => field.isConcealed = !field.isConcealed),
+                                        ),
+                                      ],
                                     ),
-                                    tooltip: field.isConcealed ? 'Masked secret' : 'Visible field',
-                                    onPressed: () => setState(() => field.isConcealed = !field.isConcealed),
-                                  ),
-
-                                  // Delete Button
-                                  IconButton(
-                                    icon: const Icon(Icons.close_rounded, size: 18, color: AppColors.rose500),
-                                    tooltip: 'Remove field',
-                                    onPressed: () => _removeCustomField(index),
                                   ),
                                 ],
                               ),
@@ -685,35 +752,57 @@ class _EditPasswordScreenState extends ConsumerState<EditPasswordScreen> {
                       final cat = categories[index];
                       final isSelected = _selectedCategory.toLowerCase() == cat.toLowerCase();
                       final catColor = getCategoryColor(cat);
-                      return ChoiceChip(
-                        avatar: isSelected
+                      return GestureDetector(
+                        onLongPress: isSystemCategoryTag(cat)
                             ? null
-                            : Container(
-                                width: 8,
-                                height: 8,
-                                decoration: BoxDecoration(
-                                  color: catColor,
-                                  shape: BoxShape.circle,
+                            : () {
+                                showTagActionSheet(
+                                  context,
+                                  ref,
+                                  cat,
+                                  onRenamed: (newName) {
+                                    if (mounted) {
+                                      setState(() => _selectedCategory = newName);
+                                    }
+                                  },
+                                  onDeleted: () {
+                                    if (mounted &&
+                                        _selectedCategory.toLowerCase() == cat.toLowerCase()) {
+                                      setState(() => _selectedCategory = 'Others');
+                                    }
+                                  },
+                                );
+                              },
+                        child: ChoiceChip(
+                          avatar: isSelected
+                              ? null
+                              : Container(
+                                  width: 8,
+                                  height: 8,
+                                  decoration: BoxDecoration(
+                                    color: catColor,
+                                    shape: BoxShape.circle,
+                                  ),
                                 ),
-                              ),
-                        label: Text(cat),
-                        selected: isSelected,
-                        onSelected: (val) {
-                          if (val) setState(() => _selectedCategory = cat);
-                        },
-                        selectedColor: AppColors.primaryBlue,
-                        backgroundColor: cardBg,
-                        labelStyle: TextStyle(
-                          fontSize: 13,
-                          fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
-                          color: isSelected
-                              ? Colors.white
-                              : (isDark ? AppColors.darkTextPrimary : AppColors.lightTextPrimary),
-                        ),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(20),
-                          side: BorderSide(
-                            color: isSelected ? AppColors.primaryBlue : borderCol,
+                          label: Text(cat),
+                          selected: isSelected,
+                          onSelected: (val) {
+                            if (val) setState(() => _selectedCategory = cat);
+                          },
+                          selectedColor: AppColors.primaryBlue,
+                          backgroundColor: cardBg,
+                          labelStyle: TextStyle(
+                            fontSize: 13,
+                            fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
+                            color: isSelected
+                                ? Colors.white
+                                : (isDark ? AppColors.darkTextPrimary : AppColors.lightTextPrimary),
+                          ),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(20),
+                            side: BorderSide(
+                              color: isSelected ? AppColors.primaryBlue : borderCol,
+                            ),
                           ),
                         ),
                       );

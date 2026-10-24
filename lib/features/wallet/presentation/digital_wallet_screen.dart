@@ -170,7 +170,7 @@ class _DigitalWalletScreenState extends ConsumerState<DigitalWalletScreen> {
                     return GlidingCategoryItem(
                       id: network,
                       label: network,
-                      count: count,
+                      count: count > 0 ? count : null,
                     );
                   }).toList(),
                   selectedId: walletState.selectedNetwork,

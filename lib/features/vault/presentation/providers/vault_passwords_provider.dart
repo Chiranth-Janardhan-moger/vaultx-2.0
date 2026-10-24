@@ -1,9 +1,11 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_riverpod/legacy.dart';
 import 'package:vaultx/core/storage/vault_storage_service.dart';
 import 'package:vaultx/core/theme/app_theme.dart';
+import 'package:vaultx/core/theme/happy_feedback.dart';
 import 'package:vaultx/features/auth/presentation/providers/auth_session_provider.dart';
 import 'package:vaultx/features/vault/domain/vault_password_entry.dart';
 import 'package:vaultx/features/vault/domain/vault_watchtower_engine.dart';
@@ -207,6 +209,376 @@ Future<String?> showAddCategoryDialog(
         ),
       );
     },
+  );
+}
+
+/// Checks if a category tag is a protected system category (All, Favorites, PINs, Others)
+bool isSystemCategoryTag(String category) {
+  final clean = category.trim().toLowerCase();
+  return clean == 'all' ||
+      clean == 'favorites' ||
+      clean == '★ favorites' ||
+      clean == 'pins' ||
+      clean == 'pin' ||
+      clean == 'others';
+}
+
+/// Action sheet shown on long-press of a category tag, offering Edit and Delete options.
+Future<void> showTagActionSheet(
+  BuildContext context,
+  WidgetRef ref,
+  String category, {
+  ValueChanged<String>? onRenamed,
+  VoidCallback? onDeleted,
+}) async {
+  if (isSystemCategoryTag(category)) {
+    unawaited(HapticFeedback.lightImpact());
+    HappyFeedback.show(context, message: 'System tag "$category" cannot be modified');
+    return;
+  }
+
+  unawaited(HapticFeedback.mediumImpact());
+  final isDark = Theme.of(context).brightness == Brightness.dark;
+  final sheetBg = isDark ? AppColors.darkCardSurface : AppColors.lightCardSurface;
+  final borderCol = isDark ? AppColors.darkBorder : AppColors.lightBorder;
+  final mutedCol = isDark ? AppColors.darkTextMuted : AppColors.lightTextMuted;
+  final catColor = getCategoryColor(category);
+
+  await showModalBottomSheet<void>(
+    context: context,
+    useRootNavigator: true,
+    isScrollControlled: true,
+    backgroundColor: Colors.transparent,
+    builder: (sheetCtx) {
+      return Material(
+        color: sheetBg,
+        borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
+        child: Container(
+          padding: const EdgeInsets.fromLTRB(20, 12, 20, 24),
+          decoration: BoxDecoration(
+            borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
+            border: Border.all(color: borderCol),
+          ),
+          child: SafeArea(
+            top: false,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                // Drag handle
+                Container(
+                  width: 36,
+                  height: 4,
+                  margin: const EdgeInsets.only(bottom: 16),
+                  decoration: BoxDecoration(
+                    color: isDark ? Colors.white24 : Colors.black12,
+                    borderRadius: BorderRadius.circular(2),
+                  ),
+                ),
+
+                // Header
+                Row(
+                  children: [
+                    Container(
+                      width: 42,
+                      height: 42,
+                      decoration: BoxDecoration(
+                        color: catColor.withAlpha(isDark ? 40 : 25),
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(color: catColor.withAlpha(100), width: 1),
+                      ),
+                      alignment: Alignment.center,
+                      child: Icon(
+                        Icons.label_rounded,
+                        color: catColor,
+                        size: 22,
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            category,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: const TextStyle(
+                              fontSize: 17,
+                              fontWeight: FontWeight.w700,
+                            ),
+                          ),
+                          const SizedBox(height: 2),
+                          Text(
+                            'Category Options',
+                            style: TextStyle(
+                              fontSize: 12,
+                              color: mutedCol,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 16),
+                Divider(height: 1, color: borderCol),
+                const SizedBox(height: 8),
+
+                // Option 1: Edit Category
+                ListTile(
+                  contentPadding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                  leading: Container(
+                    width: 38,
+                    height: 38,
+                    decoration: BoxDecoration(
+                      color: AppColors.primaryBlue.withAlpha(25),
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    alignment: Alignment.center,
+                    child: const Icon(
+                      Icons.edit_rounded,
+                      color: AppColors.primaryBlue,
+                      size: 20,
+                    ),
+                  ),
+                  title: const Text(
+                    'Edit Category',
+                    style: TextStyle(fontSize: 15, fontWeight: FontWeight.w600),
+                  ),
+                  subtitle: Text(
+                    'Rename this tag across all credentials',
+                    style: TextStyle(fontSize: 12, color: mutedCol),
+                  ),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                  onTap: () {
+                    Navigator.of(sheetCtx).pop();
+                    showEditCategoryDialog(
+                      context,
+                      ref,
+                      category,
+                      onRenamed: onRenamed,
+                    );
+                  },
+                ),
+
+                // Option 2: Delete Category
+                ListTile(
+                  contentPadding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                  leading: Container(
+                    width: 38,
+                    height: 38,
+                    decoration: BoxDecoration(
+                      color: AppColors.rose500.withAlpha(25),
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    alignment: Alignment.center,
+                    child: const Icon(
+                      Icons.delete_outline_rounded,
+                      color: AppColors.rose500,
+                      size: 20,
+                    ),
+                  ),
+                  title: const Text(
+                    'Delete Category',
+                    style: TextStyle(
+                      fontSize: 15,
+                      fontWeight: FontWeight.w600,
+                      color: AppColors.rose500,
+                    ),
+                  ),
+                  subtitle: Text(
+                    'Move items in this tag to Others and delete tag',
+                    style: TextStyle(fontSize: 12, color: mutedCol),
+                  ),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                  onTap: () {
+                    Navigator.of(sheetCtx).pop();
+                    confirmDeleteCategoryDialog(
+                      context,
+                      ref,
+                      category,
+                      onDeleted: onDeleted,
+                    );
+                  },
+                ),
+              ],
+            ),
+          ),
+        ),
+      );
+    },
+  );
+}
+
+/// Dialog to rename an existing category tag.
+Future<void> showEditCategoryDialog(
+  BuildContext context,
+  WidgetRef ref,
+  String oldCategory, {
+  ValueChanged<String>? onRenamed,
+}) async {
+  final textController = TextEditingController(text: oldCategory);
+  final isDark = Theme.of(context).brightness == Brightness.dark;
+  final cardBg = isDark ? AppColors.darkCardSurface : AppColors.lightCardSurface;
+  final borderCol = isDark ? AppColors.darkBorder : AppColors.lightBorder;
+  final mutedCol = isDark ? AppColors.darkTextMuted : AppColors.lightTextMuted;
+  final inputBg = isDark ? AppColors.darkInputSurface : AppColors.lightInputSurface;
+
+  void submit(BuildContext dialogCtx) {
+    final newName = textController.text.trim();
+    if (newName.isEmpty) return;
+    if (newName != oldCategory) {
+      ref.read(vaultPasswordsProvider.notifier).renameCategory(oldCategory, newName);
+      HapticFeedback.mediumImpact();
+      HappyFeedback.show(context, message: 'Tag renamed to "$newName"');
+      onRenamed?.call(newName);
+    }
+    Navigator.of(dialogCtx).pop();
+  }
+
+  await showDialog<void>(
+    context: context,
+    builder: (dialogCtx) {
+      return Dialog(
+        backgroundColor: cardBg,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(20),
+          side: BorderSide(color: borderCol),
+        ),
+        insetPadding: const EdgeInsets.symmetric(horizontal: 24, vertical: 24),
+        child: Padding(
+          padding: const EdgeInsets.all(22),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Row(
+                children: [
+                  Container(
+                    width: 40,
+                    height: 40,
+                    decoration: BoxDecoration(
+                      color: AppColors.primaryBlue.withAlpha(25),
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    alignment: Alignment.center,
+                    child: const Icon(
+                      Icons.edit_rounded,
+                      color: AppColors.primaryBlue,
+                      size: 20,
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const Text(
+                          'Edit Tag',
+                          style: TextStyle(
+                            fontSize: 18,
+                            fontWeight: FontWeight.w700,
+                          ),
+                        ),
+                        const SizedBox(height: 2),
+                        Text(
+                          'Rename tag across all items',
+                          style: TextStyle(fontSize: 12, color: mutedCol),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 18),
+              TextField(
+                controller: textController,
+                autofocus: true,
+                textCapitalization: TextCapitalization.words,
+                decoration: InputDecoration(
+                  labelText: 'Tag Name',
+                  hintText: 'e.g. Work, Banking, Google',
+                  filled: true,
+                  fillColor: inputBg,
+                  contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12),
+                    borderSide: BorderSide(color: borderCol),
+                  ),
+                  enabledBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12),
+                    borderSide: BorderSide(color: borderCol),
+                  ),
+                  focusedBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12),
+                    borderSide: const BorderSide(color: AppColors.primaryBlue, width: 1.5),
+                  ),
+                ),
+                onSubmitted: (_) => submit(dialogCtx),
+              ),
+              const SizedBox(height: 20),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.end,
+                children: [
+                  TextButton(
+                    onPressed: () => Navigator.of(dialogCtx).pop(),
+                    child: Text('Cancel', style: TextStyle(color: mutedCol)),
+                  ),
+                  const SizedBox(width: 8),
+                  FilledButton(
+                    style: FilledButton.styleFrom(
+                      backgroundColor: AppColors.primaryBlue,
+                      foregroundColor: Colors.white,
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                    ),
+                    onPressed: () => submit(dialogCtx),
+                    child: const Text('Save'),
+                  ),
+                ],
+              ),
+            ],
+          ),
+        ),
+      );
+    },
+  );
+}
+
+/// Confirmation dialog to delete a category tag and reassign its entries to Others.
+Future<void> confirmDeleteCategoryDialog(
+  BuildContext context,
+  WidgetRef ref,
+  String category, {
+  VoidCallback? onDeleted,
+}) async {
+  await showDialog<void>(
+    context: context,
+    builder: (ctx) => AlertDialog(
+      title: Text('Delete "$category"?'),
+      content: const Text(
+        'Items under this category will be moved to "Others". This category tag will be removed.',
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.of(ctx).pop(),
+          child: const Text('Cancel'),
+        ),
+        FilledButton(
+          style: FilledButton.styleFrom(
+            backgroundColor: AppColors.rose500,
+            foregroundColor: Colors.white,
+          ),
+          onPressed: () {
+            ref.read(vaultPasswordsProvider.notifier).deleteCategory(category);
+            unawaited(HapticFeedback.heavyImpact());
+            Navigator.of(ctx).pop();
+            HappyFeedback.show(context, message: 'Category "$category" deleted');
+            onDeleted?.call();
+          },
+          child: const Text('Delete'),
+        ),
+      ],
+    ),
   );
 }
 

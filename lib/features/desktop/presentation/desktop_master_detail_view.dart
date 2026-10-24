@@ -178,13 +178,17 @@ class _DesktopMasterDetailViewState
     }
 
     final categoryItems = categories.map((String cat) {
+      final count = categoryCounts[cat] ?? 0;
       return GlidingCategoryItem(
         id: cat,
         label: cat,
-        count: categoryCounts[cat] ?? 0,
+        count: count > 0 ? count : null,
         dotColor: (cat != 'All' && cat != '★ Favorites')
             ? getCategoryColor(cat)
             : null,
+        onLongPress: isSystemCategoryTag(cat)
+            ? null
+            : () => showTagActionSheet(context, ref, cat),
       );
     }).toList();
 

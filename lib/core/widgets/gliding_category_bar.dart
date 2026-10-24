@@ -404,6 +404,7 @@ class _CategoryItemWidgetState extends State<_CategoryItemWidget> {
         child: GestureDetector(
           onTap: widget.onTap,
           onLongPress: widget.item.onLongPress,
+          onSecondaryTap: widget.item.onLongPress,
           behavior: HitTestBehavior.opaque,
           child: AnimatedContainer(
             duration: const Duration(milliseconds: 180),
@@ -461,8 +462,8 @@ class _CategoryItemWidgetState extends State<_CategoryItemWidget> {
                   ),
                 ),
 
-                // Micro-Counter Badge
-                if (widget.item.count != null) ...[
+                // Micro-Counter Badge (omitted when 0 to avoid visual clutter)
+                if (widget.item.count != null && widget.item.count! > 0) ...[
                   const SizedBox(width: 6),
                   AnimatedContainer(
                     duration: const Duration(milliseconds: 200),

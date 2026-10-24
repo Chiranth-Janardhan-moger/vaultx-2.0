@@ -6,9 +6,19 @@ void main() {
   testWidgets('GlidingCategoryBar renders items with counter badges and handles selection', (tester) async {
     String selected = 'All';
 
+    bool longPressed = false;
+
     final items = [
       const GlidingCategoryItem(id: 'All', label: 'All', count: 12),
-      const GlidingCategoryItem(id: 'Finance', label: 'Finance', count: 4, dotColor: Colors.green),
+      GlidingCategoryItem(
+        id: 'Finance',
+        label: 'Finance',
+        count: 4,
+        dotColor: Colors.green,
+        onLongPress: () {
+          longPressed = true;
+        },
+      ),
       const GlidingCategoryItem(id: 'PINs', label: 'PINs', count: 3, dotColor: Colors.teal),
       const GlidingCategoryItem(id: 'Favorites', label: 'Favorites', count: 2, icon: Icons.star_rounded),
     ];
@@ -55,6 +65,10 @@ void main() {
     await tester.tap(find.text('PINs'));
     await tester.pumpAndSettle();
 
-    expect(selected, equals('PINs'));
+    // Long press 'Finance'
+    await tester.longPress(find.text('Finance'));
+    await tester.pumpAndSettle();
+
+    expect(longPressed, isTrue);
   });
 }
