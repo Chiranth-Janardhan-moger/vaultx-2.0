@@ -135,14 +135,10 @@ jobs:
           path: build/windows/installer/VaultX-2.0.0-Setup-x64.exe
           retention-days: 30
 
-  build-apple:
-    name: Build Apple Platforms (iOS & macOS)
+  build-macos:
+    name: Build macOS Desktop (.dmg)
     needs: code-quality-and-security
     runs-on: macos-latest
-    strategy:
-      fail-fast: false
-      matrix:
-        target: [ios, macos]
     steps:
       - name: Checkout Repository
         uses: actions/checkout@v4
@@ -159,35 +155,19 @@ jobs:
           cache: true
 
       - name: Enable macOS Desktop Support
-        if: matrix.target == 'macos'
         run: flutter config --enable-macos-desktop
 
       - name: Install Dependencies
         run: flutter pub get
 
-      - name: Build iOS Application (No Codesign simulator build)
-        if: matrix.target == 'ios'
-        run: flutter build ios --simulator --no-codesign --debug
-
       - name: Build macOS Application (unsigned)
-        if: matrix.target == 'macos'
         run: flutter build macos --debug
 
       - name: Package macOS Disk Image (.dmg)
-        if: matrix.target == 'macos'
         run: |
           hdiutil create -volname "VaultX 2.0" -srcfolder build/macos/Build/Products/Debug/vaultx.app -ov -format UDZO build/macos/VaultX-2.0.0.dmg
 
-      - name: Upload iOS Build Artifact (no-codesign simulator build)
-        if: matrix.target == 'ios'
-        uses: actions/upload-artifact@v4
-        with:
-          name: vaultx-ios-nocodesign-${{ github.sha }}
-          path: build/ios/iphonesimulator/
-          retention-days: 30
-
       - name: Upload macOS DMG Artifact
-        if: matrix.target == 'macos'
         uses: actions/upload-artifact@v4
         with:
           name: vaultx-macos-dmg-${{ github.sha }}
